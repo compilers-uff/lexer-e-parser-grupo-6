@@ -144,6 +144,8 @@ action code {:
  */
 terminal NEWLINE;
 terminal String PLUS; 
+terminal String MINUS;
+terminal String UMINUS;
 terminal Integer NUMBER; 
 /* Returned by the lexer for erroneous tokens.  Since it does not appear in
  * the grammar, it indicates a syntax error. */
@@ -158,11 +160,12 @@ non terminal Program           program;
 non terminal List<Declaration> program_head;
 non terminal List<Stmt>        stmt_list, opt_stmt_list;
 non terminal Stmt              stmt, expr_stmt;
-non terminal Expr              expr, binary_expr;
+non terminal Expr              expr, binary_expr, unary_expr;
 
 /* Precedences (lowest to highest) for resolving what would otherwise be
  * ambiguities in the form of shift/reduce conflicts.. */
-precedence left PLUS;
+precedence left PLUS, MINUS;
+precedence left UMINUS;
 
 /* The start symbol. */
 start with program;
@@ -202,6 +205,7 @@ expr_stmt ::= expr:e    {: RESULT = new ExprStmt(exleft, exright, e); :}
             ;
 
 expr ::= binary_expr:e  {: RESULT = e; :}
+       | unary_expr:e {: RESULT = e; :}
        | NUMBER:n       {: RESULT = new IntegerLiteral(nxleft, nxright, n); :}
        ;
 
@@ -212,3 +216,7 @@ binary_expr ::= expr:e1 PLUS:op expr:e2
                         {: RESULT = new BinaryExpr(e1xleft, e2xright,
                                                    e1, op, e2); :}
               ;
+unary_expr ::= MINUS:op expr:e {: RESULT = new UnaryExpr(opxleft,exright,op,e); :}
+              %prec UMINUS
+              ;
+
