@@ -143,10 +143,65 @@ action code {:
  * in actions ( {: ... :} ).
  */
 terminal NEWLINE;
-terminal String PLUS; 
-terminal String MINUS;
 terminal String UMINUS;
-terminal Integer NUMBER; 
+terminal Integer NUMBER;
+terminal String IDENTIFIER;
+terminal String ARROW;
+terminal String PLUS;
+terminal String MINUS;
+terminal String TIMES;
+terminal String FLOORDIV;
+terminal String MOD;
+terminal String LE;
+terminal String GE;
+terminal String EQ;
+terminal String NE;
+terminal String LT;
+terminal String GT;
+terminal String ASSIGN;
+terminal String LPAREN;
+terminal String RPAREN;
+terminal String LBRACKET;
+terminal String RBRACKET;
+terminal String COMMA;
+terminal String COLON;
+terminal String DOT;
+terminal boolean FALSE;
+terminal String NONE;
+terminal boolean TRUE;
+terminal String AND;
+terminal String AS;
+terminal String ASSERT;
+terminal String ASYNC;
+terminal String AWAIT;
+terminal String BREAK;
+terminal String CLASS;
+terminal String CONTINUE;
+terminal String DEF;
+terminal String DEL;
+terminal String ELIF;
+terminal String ELSE;
+terminal String EXCEPT;
+terminal String FINALLY;
+terminal String FOR;
+terminal String FROM;
+terminal String GLOBAL;
+terminal String IF;
+terminal String IMPORT;
+terminal String IN;
+terminal String IS;
+terminal String LAMBDA;
+terminal String NONLOCAL;
+terminal String NOT;
+terminal String OR;
+terminal String PASS;
+terminal String RAISE;
+terminal String RETURN;
+terminal String TRY;
+terminal String WHILE;
+terminal String WITH;
+terminal String YIELD;
+terminal String STRING;
 /* Returned by the lexer for erroneous tokens.  Since it does not appear in
  * the grammar, it indicates a syntax error. */
 terminal UNRECOGNIZED;   
@@ -159,8 +214,10 @@ terminal UNRECOGNIZED;
 non terminal Program           program;
 non terminal List<Declaration> program_head;
 non terminal List<Stmt>        stmt_list, opt_stmt_list;
-non terminal Stmt              stmt, expr_stmt;
+non terminal List<Expr>        expr_list;
+non terminal Stmt              stmt, expr_stmt, assign_stmt;
 non terminal Expr              expr, binary_expr, unary_expr;
+non terminal Identifier        identifier; 
 
 /* Precedences (lowest to highest) for resolving what would otherwise be
  * ambiguities in the form of shift/reduce conflicts.. */
@@ -190,7 +247,7 @@ opt_stmt_list ::=                    {: RESULT = empty(); :}
 
 stmt_list ::= stmt:s                 {: RESULT = single(s); :}
             | stmt_list:l stmt:s     {: RESULT = combine(l, s); :}
-            | stmt_list:l error      {: RESULT = l; :}
+            | stmt_list:l error     {: RESULT = l; :}
             /* If there is a syntax error in the source, this says to discard
              * symbols from the parsing stack and perform reductions until
              * there is a stmt_list on top of the stack, and then to discard
@@ -201,12 +258,28 @@ stmt_list ::= stmt:s                 {: RESULT = single(s); :}
 stmt ::= expr_stmt:s NEWLINE {: RESULT = s; :}
               ;
 
+
+
+
 expr_stmt ::= expr:e    {: RESULT = new ExprStmt(exleft, exright, e); :}
             ;
 
+expr_list ::= expr:e                 {: RESULT = single(e); :}
+            | expr_list:l COMMA expr:e    {: RESULT = combine(l, e); :}
+            | expr_list:l expr:e    {: RESULT = combine(l, e); :}
+            | expr_list:l error      {: RESULT = l; :}
+            ;
+
+
 expr ::= binary_expr:e  {: RESULT = e; :}
        | unary_expr:e {: RESULT = e; :}
+       | identifier:id LPAREN expr_list:l RPAREN:rp {: RESULT = new CallExpr(idxleft,rpxright,id,l); :}
        | NUMBER:n       {: RESULT = new IntegerLiteral(nxleft, nxright, n); :}
+       | STRING:str {: RESULT = new StringLiteral(strxleft,strxright,str); :}
+       | NONE: non {: RESULT = new NoneLiteral(nonxleft,nonxright); :}
+       | FALSE:f {: RESULT = new BooleanLiteral(fxleft,fxright,f); :}
+       | TRUE: t {: RESULT = new BooleanLiteral(txleft,txright,t); :}
+       | LBRACKET expr_list:l RBRACKET {: new ListExpr(lxleft,lxright,l); :} 
        ;
 
 
@@ -220,3 +293,5 @@ unary_expr ::= MINUS:op expr:e {: RESULT = new UnaryExpr(opxleft,exright,op,e); 
               %prec UMINUS
               ;
 
+identifier ::=  IDENTIFIER:id {: RESULT = new Identifier(idxleft,idxright,id); :}
+            ;
