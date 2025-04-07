@@ -158,15 +158,18 @@ IntegerLiteral = 0 | [1-9][0-9]*
                                                         
                                                         if (this.pilha.peek() < this.leng) {
                                                             this.pilha.push(this.leng);
-                                                            return symbol(ChocoPyTokens.INDENT)
+                                                            this.state = 0;
+                                                            return symbol(ChocoPyTokens.INDENT);
                                                         }
                                                         else {
                                                             if (this.pilha.peek() > this.leng) {
                                                                 this.pilha.pop();
                                                                 if (this.pilha.peek() > this.leng) {
                                                                   yypushback(yylength())
+                                                                  return symbol(ChocoPyTokens.DEDENT);
                                                                 } 
-                                                                return symbol(ChocoPyTokens.DEDENT)
+                                                                this.state = 0;
+                                                                return symbol(ChocoPyTokens.DEDENT);
                                                             }
                                                         }
                                                         
