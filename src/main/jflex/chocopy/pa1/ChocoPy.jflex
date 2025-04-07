@@ -33,6 +33,12 @@ import java_cup.runtime.*;
     /** Producer of token-related values for the parser. */
     final ComplexSymbolFactory symbolFactory = new ComplexSymbolFactory();
 
+    public Stack<Integer> pilha = new Stack<>();
+    pilha.push(0)
+    public int state = 0;
+    public String whitesp = "";
+    public int leng = 0;
+
     /** Return a terminal symbol of syntactic category TYPE and no
      *  semantic value at the current source location. */
     private Symbol symbol(int type) {
@@ -64,7 +70,8 @@ IntegerLiteral = 0 | [1-9][0-9]*
 <YYINITIAL> {
 
   /* Delimiters. */
-  {LineBreak}                 { return symbol(ChocoPyTokens.NEWLINE); }
+  {LineBreak}                 { if (this.state == 0){this.state = 1;}
+                                                return symbol(ChocoPyTokens.NEWLINE); }
 
   /* Literals. */
   {IntegerLiteral}            { return symbol(ChocoPyTokens.NUMBER,
@@ -133,7 +140,25 @@ IntegerLiteral = 0 | [1-9][0-9]*
   "yield"   { return symbol(ChocoPyTokens.YIELD, yytext()); }
 
   /* Whitespace. */
-  {WhiteSpace}                { /* ignore */ }
+  {WhiteSpace}                 { if (this.state == 1) {
+                                                        this.whitesp = yytext();
+                                                        this.leng = whitesp.lenght();
+                                                        while (true) {
+                                                            if (this.pilha.peek() < this.leng) {
+                                                                this.pilha.push(this.leng);
+                                                                return symbol(ChocoPyTokens.INDENT)
+                                                            }
+                                                            else {
+                                                                if (this.pilha.peek() == this.leng) {
+                                                                    break;
+                                                                }
+                                                                else {
+                                                                    this.pilha.pop();
+                                                                    >aqui<
+                                                                }
+                                                            }
+                                                        }
+                                                    } }
 }
 
 <<EOF>>                       { return symbol(ChocoPyTokens.EOF); }
