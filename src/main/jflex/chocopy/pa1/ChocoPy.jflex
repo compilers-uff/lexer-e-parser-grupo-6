@@ -34,11 +34,11 @@ import java_cup.runtime.*;
     final ComplexSymbolFactory symbolFactory = new ComplexSymbolFactory();
     public Stack<Integer> pilha = new Stack<>();
     pilha.push(0)
-    public int state = 0;
+    public int estado = 0;
     public String whitesp = "";
     public int leng = 0;
-    public int ws = 0;
-    public int ts = 0;
+    public int qtde_whitesp = 0;
+    public int qtde_tab = 0;
 
     /** Return a terminal symbol of syntactic category TYPE and no
      *  semantic value at the current source location. */
@@ -71,7 +71,10 @@ IntegerLiteral = 0 | [1-9][0-9]*
 <YYINITIAL> {
 
   /* Delimiters. */
-  {LineBreak}                 { if (this.state == 0){this.state = 1;}
+
+  // Estado 0 -> todo whitespace será ignorado.
+  // Estado 1 -> houve uma quebra de linha, então o whitespace será tratado de forma diferente (será analisada a identação)
+  {LineBreak}                 { if (this.estado == 0){this.estado = 1;}
                                                 return symbol(ChocoPyTokens.NEWLINE); }
 
   /* Literals. */
@@ -141,36 +144,43 @@ IntegerLiteral = 0 | [1-9][0-9]*
   "yield"   { return symbol(ChocoPyTokens.YIELD, yytext()); }
 
   /* Whitespace. */
-  {WhiteSpace}                { if (this.state == 1) {
+  {WhiteSpace}                { if (this.estado == 1) {
                                                         this.whitesp = yytext();
                                                         this.leng = whitesp.lenght();
-                                                        this.ws = 0;
-                                                        this.ts = 0;
+                                                        this.qtde_whitesp = 0;
+                                                        this.qtde_tab = 0;
+                                                        // Conta quantos caracteres são espaços simples e quantos são tabs
                                                         for (int i = 0; i < whitesp.length(); i++){
                                                             char c = whitesp.charAt(i);        
                                                             if (c.equals(' ')) {
-                                                              ws++;
+                                                              qtde_whitesp++;
                                                             } else {
-                                                              ts++;
+                                                              qtde_tab++;
                                                             }
                                                         }
+                                                        // Determina a real quantidade de espaços
                                                         this.leng = ws + 8*ts;
                                                         
+                                                        // Lida com a pilha de identação
                                                         if (this.pilha.peek() < this.leng) {
                                                             this.pilha.push(this.leng);
-                                                            this.state = 0;
+                                                            this.estado = 0;
                                                             return symbol(ChocoPyTokens.INDENT);
                                                         }
                                                         else {
                                                             if (this.pilha.peek() > this.leng) {
                                                                 this.pilha.pop();
+
+                                                                // Se, mesmo após retirar um nível de identação, ainda é necessário emitir mais tokens DEDENT, o ponteiro volta para o início do WhiteSpace e chega a esse trecho novamente.
+
                                                                 if (this.pilha.peek() > this.leng) {
                                                                   yypushback(yylength())
                                                                   return symbol(ChocoPyTokens.DEDENT);
                                                                 } 
-                                                                this.state = 0;
+                                                                this.estado = 0;
                                                                 return symbol(ChocoPyTokens.DEDENT);
                                                             }
+                                                            this.estado = 0;
                                                         }
                                                         
                                                     } }
