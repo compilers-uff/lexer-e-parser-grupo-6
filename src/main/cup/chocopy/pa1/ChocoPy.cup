@@ -215,6 +215,7 @@ non terminal Program           program;
 non terminal List<Declaration> program_head;
 non terminal List<Stmt>        stmt_list, opt_stmt_list;
 non terminal List<Expr>        expr_list;
+non terminal List<Expr> identifier_list;
 non terminal Stmt              stmt, expr_stmt, assign_stmt;
 non terminal Expr              expr, binary_expr, unary_expr;
 non terminal Identifier        identifier; 
@@ -256,8 +257,12 @@ stmt_list ::= stmt:s                 {: RESULT = single(s); :}
             ;
 
 stmt ::= expr_stmt:s NEWLINE {: RESULT = s; :}
+       | assign_stmt:a NEWLINE {: RESULT = a; :}
               ;
 
+assign_stmt ::= identifier_list:idlist ASSIGN identifier:id {: RESULT = new AssignStmt(idlistxleft,idxright,idlist,id); :}
+              | identifier_list:idlist ASSIGN expr:e {: RESULT = new AssignStmt(idlistxleft,exright,idlist,e); :}
+              ; 
 
 
 
@@ -295,3 +300,7 @@ unary_expr ::= MINUS:op expr:e {: RESULT = new UnaryExpr(opxleft,exright,op,e); 
 
 identifier ::=  IDENTIFIER:id {: RESULT = new Identifier(idxleft,idxright,id); :}
             ;
+
+identifier_list ::= identifier_list:l ASSIGN identifier:id {: RESULT = combine(l,id); :}
+                  | identifier:id {: RESULT = single(id); :}
+                  ;
