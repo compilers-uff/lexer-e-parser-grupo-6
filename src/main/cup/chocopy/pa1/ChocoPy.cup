@@ -143,6 +143,8 @@ action code {:
  * in actions ( {: ... :} ).
  */
 terminal NEWLINE;
+terminal IDENT;
+terminal DEDENT;
 terminal String UMINUS;
 terminal Integer NUMBER;
 terminal String IDENTIFIER;
