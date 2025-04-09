@@ -40,6 +40,12 @@ import java_cup.runtime.*;
     public int qtde_whitesp = 0;
     public int qtde_tab = 0;
 
+    public Stack<Integer> pilha = new Stack<>();
+    pilha.push(0)
+    public int state = 0;
+    public String whitesp = "";
+    public int leng = 0;
+
     /** Return a terminal symbol of syntactic category TYPE and no
      *  semantic value at the current source location. */
     private Symbol symbol(int type) {
@@ -75,6 +81,7 @@ IntegerLiteral = 0 | [1-9][0-9]*
   // Estado 0 -> todo whitespace será ignorado.
   // Estado 1 -> houve uma quebra de linha, então o whitespace será tratado de forma diferente (será analisada a identação)
   {LineBreak}                 { if (this.estado == 0){this.estado = 1;}
+
                                                 return symbol(ChocoPyTokens.NEWLINE); }
 
   /* Literals. */
@@ -182,7 +189,6 @@ IntegerLiteral = 0 | [1-9][0-9]*
                                                             }
                                                             this.estado = 0;
                                                         }
-                                                        
                                                     } }
 }
 
