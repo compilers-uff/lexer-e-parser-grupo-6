@@ -1,5 +1,6 @@
 package chocopy.pa1;
 import java_cup.runtime.*;
+import java.util.Stack;
 
 %%
 
@@ -32,19 +33,13 @@ import java_cup.runtime.*;
 
     /** Producer of token-related values for the parser. */
     final ComplexSymbolFactory symbolFactory = new ComplexSymbolFactory();
-    public Stack<Integer> pilha = new Stack<>();
-    pilha.push(0)
+    public static Stack<Integer> pilha = new Stack<>();
+    static{pilha.push(0);}
     public int estado = 0;
     public String whitesp = "";
     public int leng = 0;
     public int qtde_whitesp = 0;
     public int qtde_tab = 0;
-
-    public Stack<Integer> pilha = new Stack<>();
-    pilha.push(0)
-    public int state = 0;
-    public String whitesp = "";
-    public int leng = 0;
 
     /** Return a terminal symbol of syntactic category TYPE and no
      *  semantic value at the current source location. */
@@ -153,12 +148,12 @@ IntegerLiteral = 0 | [1-9][0-9]*
   /* Whitespace. */
   {WhiteSpace}                { if (this.estado == 1) {
                                                         this.whitesp = yytext();
-                                                        this.leng = whitesp.lenght();
+                                                        this.leng = whitesp.length();
                                                         this.qtde_whitesp = 0;
                                                         this.qtde_tab = 0;
                                                         // Conta quantos caracteres são espaços simples e quantos são tabs
                                                         for (int i = 0; i < whitesp.length(); i++){
-                                                            char c = whitesp.charAt(i);        
+                                                            String c = "" + whitesp.charAt(i);        
                                                             if (c.equals(' ')) {
                                                               qtde_whitesp++;
                                                             } else {
@@ -166,13 +161,13 @@ IntegerLiteral = 0 | [1-9][0-9]*
                                                             }
                                                         }
                                                         // Determina a real quantidade de espaços
-                                                        this.leng = ws + 8*ts;
+                                                        this.leng = qtde_whitesp + 8*qtde_tab;
                                                         
                                                         // Lida com a pilha de identação
                                                         if (this.pilha.peek() < this.leng) {
                                                             this.pilha.push(this.leng);
                                                             this.estado = 0;
-                                                            return symbol(ChocoPyTokens.INDENT);
+                                                            return symbol(ChocoPyTokens.INDENT, yytext());
                                                         }
                                                         else {
                                                             if (this.pilha.peek() > this.leng) {
@@ -181,7 +176,7 @@ IntegerLiteral = 0 | [1-9][0-9]*
                                                                 // Se, mesmo após retirar um nível de identação, ainda é necessário emitir mais tokens DEDENT, o ponteiro volta para o início do WhiteSpace e chega a esse trecho novamente.
 
                                                                 if (this.pilha.peek() > this.leng) {
-                                                                  yypushback(yylength())
+                                                                  yypushback(yylength());
                                                                   return symbol(ChocoPyTokens.DEDENT);
                                                                 } 
                                                                 this.estado = 0;
