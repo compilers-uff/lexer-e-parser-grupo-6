@@ -218,7 +218,7 @@ non terminal List<Declaration> program_head;
 non terminal List<Stmt>        stmt_list, opt_stmt_list;
 non terminal List<Expr>        expr_list;
 non terminal List<Expr> chained_assigns;
-non terminal Stmt              stmt, expr_stmt, assign_stmt;
+non terminal Stmt              stmt, expr_stmt, assign_stmt, if_stmt;
 non terminal Expr              expr, binary_expr, unary_expr,numeric_expr;
 non terminal Identifier        identifier; 
 non terminal CompilerError     compiler_error;
@@ -263,6 +263,7 @@ stmt_list ::= stmt:s                 {: RESULT = single(s); :}
 
 stmt ::= expr_stmt:s NEWLINE {: RESULT = s; :}
        | assign_stmt:a NEWLINE {: RESULT = a; :}
+/*       | if_stmt:i NEWLINE {: RESULT = i; :} */
               ;
 
 assign_stmt ::= chained_assigns:idlist ASSIGN identifier:id {: RESULT = new AssignStmt(idlistxleft,idxright,idlist,id); :}
@@ -272,7 +273,7 @@ assign_stmt ::= chained_assigns:idlist ASSIGN identifier:id {: RESULT = new Assi
               | compiler_error {: RESULT = null; :}
               ; 
 
-
+/*if_stmt ::= IF:i expr:e COLON IDENT NEWLINE stmt_list:sl DEDENT:d {: RESULT = new IfStmt(ixleft,dxright,e,sl, List<Stmt>()); :}*/
 
 expr_stmt ::= expr:e    {: RESULT = new ExprStmt(exleft, exright, e); :}
             ;
