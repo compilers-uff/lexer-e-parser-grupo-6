@@ -35,8 +35,8 @@ import java.util.Stack;
 
     /** Producer of token-related values for the parser. */
     final ComplexSymbolFactory symbolFactory = new ComplexSymbolFactory();
-    public static Stack<Integer> pilha = new Stack<>();
-    static{pilha.push(0);}
+    public Stack<Integer> pilha = new Stack<>();
+    {pilha.push(0);}
     public int estado = 0;
     public String whitesp = "";
     public int leng = 0;
