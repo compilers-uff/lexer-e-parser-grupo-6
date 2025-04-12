@@ -214,9 +214,9 @@ terminal UNRECOGNIZED;
  * defines the listed nonterminal identifier symbols to have semantic values
  * of type <type>. */
 non terminal Program           program;
-non terminal List<Declaration> program_head;
+non terminal List<Declaration> program_head,declaration_list,class_body,var_def_list,func_def_list,func_declarations;
 non terminal List<Stmt>        stmt_list, opt_stmt_list,block;
-non terminal List<Expr>        expr_list;
+non terminal List<Expr>        expr_list,opt_expr_list;
 non terminal List<Expr> chained_assigns;
 non terminal Stmt              stmt,simple_stmt,elif_stmt;
 non terminal Expr              expr,cexpr;
@@ -224,6 +224,16 @@ non terminal Identifier        identifier;
 non terminal IndexExpr         index_expr;
 non terminal MemberExpr        member_expr;
 non terminal Literal           literals;
+non terminal Declaration       declaration;
+non terminal ClassDef          class_def;
+non terminal VarDef            var_def;
+non terminal FuncDef           func_def;
+non terminal TypedVar          typed_var;
+non terminal TypeAnnotation   type;
+non terminal GlobalDecl        global_decl;
+non terminal NonLocalDecl      nonlocal_decl;
+non terminal List<TypedVar>    typed_var_list;
+
 
 /* Precedences (lowest to highest) for resolving what would otherwise be
  * ambiguities in the form of shift/reduce conflicts.. */
@@ -245,16 +255,76 @@ start with program;
 /*****  GRAMMAR RULES *****/
 
 
-program ::= program_head:d opt_stmt_list:s
-        {: RESULT = new Program(d.isEmpty() ? getLeft(s) : getLeft(d),
-                                sxright, d, s, errors);
-        :}
-        ;
+program ::= program_head:d opt_stmt_list:s {: RESULT = new Program(dxleft,sxright, d, s, errors); :}
+          | opt_stmt_list:s {: RESULT = new Program(sxleft,sxright, empty(), s, errors); :}
+          ;
 
-/* Initial list of declarations. */
-program_head ::= /* not implemented; currently matches empty string */
-                                     {: RESULT = empty(); :}
+
+program_head ::= declaration:d {: RESULT = single(d); :}
+                   | program_head:l declaration:d {: RESULT = combine(l,d); :}
+                   | program_head:l error     {: RESULT = l; :}
+                   ;
+
+declaration ::= class_def:cd {: RESULT = cd; :}
+              | func_def:fd {: RESULT = fd; :}
+              | var_def:vd {: RESULT = vd; :}
+              ;
+
+class_def ::= CLASS:cop identifier:id1 LPAREN identifier:id2 RPAREN COLON NEWLINE INDENT class_body:cb DEDENT:dde {: RESULT = new ClassDef(copxleft,ddexright,id1,id2,cb); :}
+            ;
+
+class_body ::= PASS NEWLINE {: RESULT = null; :}
+             | var_def_list:vdl {: RESULT = vdl; :}
+             | func_def_list:fdl {: RESULT = fdl; :}
+             ;
+
+var_def_list ::= var_def:v {: RESULT = single(v); :}
+               | var_def_list:l var_def:v {: RESULT = combine(l, v); :}
+               | var_def_list:l error     {: RESULT = l; :}
+               ;
+
+func_def_list ::= func_def:f {: RESULT = single(f); :}
+               | func_def_list:l var_def:f {: RESULT = combine(l, f); :}
+               | func_def_list:l error     {: RESULT = l; :}
+               ;
+
+func_def ::= DEF:first identifier:id LPAREN RPAREN COLON NEWLINE INDENT func_declarations:d stmt_list:s DEDENT:last {: RESULT =  new FuncDef(firstxleft,lastxright,id,empty(),null,d,s); :}
+           | DEF:first identifier:id LPAREN typed_var_list:tl RPAREN COLON NEWLINE INDENT func_declarations:d stmt_list:s DEDENT:last {: RESULT =  new FuncDef(firstxleft,lastxright,id,tl,null,d,s); :}
+           | DEF:first identifier:id LPAREN  RPAREN ARROW type:ta COLON NEWLINE INDENT func_declarations:d stmt_list:s DEDENT:last {: RESULT =  new FuncDef(firstxleft,lastxright,id,empty(),ta,d,s); :}
+           | DEF:first identifier:id LPAREN typed_var_list:tl RPAREN ARROW type:ta COLON NEWLINE INDENT func_declarations:d stmt_list:s DEDENT:last {: RESULT =  new FuncDef(firstxleft,lastxright,id,tl,ta,d,s); :}
+           ;
+
+func_declarations ::= global_decl:g                 {: RESULT = single(g); :}
+            | nonlocal_decl:nl                 {: RESULT = single(nl); :}
+            | var_def:v                 {: RESULT = single(v); :}
+            | func_def:f                 {: RESULT = single(f); :}
+            | func_declarations:l global_decl:g      {: RESULT = combine(l, g); :}
+            | func_declarations:l nonlocal_decl:nl     {: RESULT = combine(l, nl); :}
+            | func_declarations:l var_def:v      {: RESULT = combine(l, v); :}
+            | func_declarations:l func_def:f      {: RESULT = combine(l, f); :}
+            | func_declarations:l error     {: RESULT = l; :}
+            ;
+
+typed_var_list ::= typed_var:t {: RESULT = single(t); :}
+                 | typed_var_list:l COMMA typed_var:t {: RESULT = combine(l,t); :}
+                 | typed_var_list:l error {: RESULT = l; :}
+                 ;
+
+typed_var ::= identifier:id COLON type:ty {: RESULT = new TypedVar(idxleft,tyxright,id,ty); :}
+            ;
+
+type ::= identifier:id {: RESULT = null; :}
+       | LBRACKET type:t RBRACKET {: RESULT = t; :}
+       ;
+
+global_decl ::= GLOBAL:first identifier:id NEWLINE:last {: RESULT = new GlobalDecl(firstxleft,lastxright,id); :}
+              ;
+
+nonlocal_decl ::= NONLOCAL:first identifier:id NEWLINE:last {: RESULT = new NonLocalDecl(firstxleft,lastxright,id); :}
                 ;
+
+var_def ::= typed_var:ty ASSIGN literals:value NEWLINE:last {: RESULT = new VarDef(tyxleft,lastxright,ty,value); :}
+          ;
 
 opt_stmt_list ::=                    {: RESULT = empty(); :}
                 | stmt_list:s        {: RESULT = s; :}
@@ -277,6 +347,7 @@ stmt ::= simple_stmt:s NEWLINE {: RESULT = s; :}
        | IF:op expr:e COLON block:then ELSE block:elseblock {: RESULT = new IfStmt(opxleft,elseblockxright,e,then,elseblock); :}
        | WHILE:whileop expr:e COLON block:doblock {:  RESULT = new WhileStmt(whileopxleft,doblockxright,e,doblock); :}
        | FOR:forop identifier:id IN expr:e COLON block:doblock {: RESULT = new ForStmt(foropxleft,doblockxright,id,e,doblock); :}
+       | NEWLINE {: RESULT = null; :}
        ;
 
 elif_stmt ::= elif_stmt ELIF:op expr:e COLON block:then {: RESULT = new IfStmt(opxleft,thenxright,e,then,empty()); :}
@@ -291,8 +362,6 @@ simple_stmt ::= PASS {: RESULT = null; :}
               ;
 
 
-expr_stmt ::= expr:e    {: RESULT = new ExprStmt(exleft, exright, e); :}
-            ;
 
 block ::= NEWLINE INDENT stmt_list:s DEDENT {: RESULT = s; :}
         ;
@@ -304,6 +373,9 @@ expr_list ::= expr:e                 {: RESULT = single(e); :}
             | expr_list:l error      {: RESULT = l; :}
             ;
 
+opt_expr_list ::=   {: RESULT = empty(); :}
+                | expr_list:l {: RESULT = l; :}
+                ;
 
 expr ::= cexpr:e {: RESULT = e; :}
        | NOT:op expr:e {: RESULT = new UnaryExpr(opxleft,exright,op,e); :}
@@ -334,9 +406,9 @@ cexpr ::= literals:l {: RESULT = l; :}
         | cexpr:e1 LT:op cexpr:e2 {: RESULT = new BinaryExpr(e1xleft, e2xright, e1, op, e2); :}
         | member_expr:me {: RESULT = me; :}
         | index_expr:ie {: RESULT = ie; :}
-        | LBRACKET expr_list:l RBRACKET {: new ListExpr(lxleft,lxright,l); :} 
-        | member_expr:me LPAREN LBRACKET expr_list:l RBRACKET RPAREN:rp {: RESULT = new MethodCallExpr(mexleft,rpxright,me,l); :}
-        | identifier:id LPAREN expr_list:l RPAREN:rp {: RESULT = new CallExpr(idxleft,rpxright,id,l); :}
+        | LBRACKET opt_expr_list:l RBRACKET {: new ListExpr(lxleft,lxright,l); :} 
+        | member_expr:me LPAREN LBRACKET opt_expr_list:l RBRACKET RPAREN:rp {: RESULT = new MethodCallExpr(mexleft,rpxright,me,l); :}
+        | identifier:id LPAREN opt_expr_list:l RPAREN:rp {: RESULT = new CallExpr(idxleft,rpxright,id,l); :}
         | MINUS:op cexpr:e {: RESULT = new UnaryExpr(opxleft, exright,op,e); :}
         | LPAREN expr:e RPAREN {: RESULT = e; :}
         | identifier:id {: RESULT = id; :}
@@ -358,7 +430,3 @@ chained_assigns ::= chained_assigns:l ASSIGN identifier:id {: RESULT = combine(l
                   | index_expr:ie {: RESULT = single(ie); :}
                   | member_expr:me {: RESULT = single(me); :}
                   ;
-
-compiler_error ::= chained_assigns:l ASSIGN:a1 LPAREN identifier ASSIGN:a2 identifier RPAREN {: RESULT = new CompilerError(a1xleft,a2xright,"Parse error near token EQ: =", true); :}
-                 | chained_assigns:l ASSIGN:a1 LPAREN identifier ASSIGN:a2 expr RPAREN {: RESULT = new CompilerError(a1xleft,a2xright,"Parse error near token EQ: =", true); :}
-                 ;
