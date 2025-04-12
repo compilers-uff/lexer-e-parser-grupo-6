@@ -4,7 +4,7 @@ import java.util.Stack;
 
 %%
 
-/*** Do not change the flags below unless you know what you are doing. ***/
+/* Do not change the flags below unless you know what you are doing. */
 
 %unicode
 %line
@@ -19,7 +19,9 @@ import java.util.Stack;
 
 %eofclose false
 
-/*** Do not change the flags above unless you know what you are doing. ***/
+%state INDENT_CTRL
+
+/* Do not change the flags above unless you know what you are doing. */
 
 /* The following code section is copied verbatim to the
  * generated lexer class. */
@@ -75,8 +77,7 @@ IntegerLiteral = 0 | [1-9][0-9]*
 
   // Estado 0 -> todo whitespace será ignorado.
   // Estado 1 -> houve uma quebra de linha, então o whitespace será tratado de forma diferente (será analisada a identação)
-  {LineBreak}                 { if (this.estado == 0){this.estado = 1;}
-
+  {LineBreak}                 { yybegin(INDENT_CTRL);
                                                 return symbol(ChocoPyTokens.NEWLINE); }
 
 
@@ -148,48 +149,62 @@ IntegerLiteral = 0 | [1-9][0-9]*
 
 
   /* Whitespace. */
-  {WhiteSpace}                { if (this.estado == 1) {
-                                                        this.whitesp = yytext();
-                                                        this.leng = whitesp.length();
-                                                        this.qtde_whitesp = 0;
-                                                        this.qtde_tab = 0;
-                                                        // Conta quantos caracteres são espaços simples e quantos são tabs
-                                                        for (int i = 0; i < whitesp.length(); i++){
-                                                            String c = "" + whitesp.charAt(i);        
-                                                            if (c.equals(' ')) {
-                                                              qtde_whitesp++;
-                                                            } else {
-                                                              qtde_tab++;
-                                                            }
-                                                        }
-                                                        // Determina a real quantidade de espaços
-                                                        this.leng = qtde_whitesp + 8*qtde_tab;
-                                                        
-                                                        // Lida com a pilha de identação
-                                                        if (this.pilha.peek() < this.leng) {
-                                                            this.pilha.push(this.leng);
-                                                            this.estado = 0;
-                                                            return symbol(ChocoPyTokens.INDENT, yytext());
-                                                        }
-                                                        else {
-                                                            if (this.pilha.peek() > this.leng) {
-                                                                this.pilha.pop();
-
-                                                                // Se, mesmo após retirar um nível de identação, ainda é necessário emitir mais tokens DEDENT, o ponteiro volta para o início do WhiteSpace e chega a esse trecho novamente.
-
-                                                                if (this.pilha.peek() > this.leng) {
-                                                                  yypushback(yylength());
-                                                                  return symbol(ChocoPyTokens.DEDENT);
-                                                                } 
-                                                                this.estado = 0;
-                                                                return symbol(ChocoPyTokens.DEDENT);
-                                                            }
-                                                            this.estado = 0;
-                                                        }
-                                                    } }
+  {WhiteSpace}                {}
 }
 
-<<EOF>>                       { return symbol(ChocoPyTokens.EOF); }
+<INDENT_CTRL> {
 
+  {WhiteSpace} {
+    this.whitesp = yytext();
+    this.leng = whitesp.length();
+    this.qtde_whitesp = 0;
+    this.qtde_tab = 0;
+
+    for (int i = 0; i < whitesp.length(); i++) {
+        char c = whitesp.charAt(i);
+        if (c == ' ') qtde_whitesp++;
+        else if (c == '\t') qtde_tab++;
+    }
+
+    this.leng = qtde_whitesp + 8 * qtde_tab;
+
+    if (pilha.peek() < leng) {
+        pilha.push(leng);
+        yybegin(YYINITIAL);
+        return symbol(ChocoPyTokens.INDENT, yytext());
+    } else if (pilha.peek() > leng) {
+        pilha.pop();
+        if (pilha.peek() > leng) {
+            yypushback(yylength());
+            return symbol(ChocoPyTokens.DEDENT);
+        }
+        yybegin(YYINITIAL);
+        return symbol(ChocoPyTokens.DEDENT);
+    }
+
+    yybegin(YYINITIAL);
+  }
+
+  [^] {
+    if (pilha.peek() > 0) {
+        pilha.pop();
+        if (pilha.peek() > 0) {
+            yypushback(1);
+            return symbol(ChocoPyTokens.DEDENT);
+        }
+        yypushback(1);
+        yybegin(YYINITIAL);
+        return symbol(ChocoPyTokens.DEDENT);
+    }
+    yybegin(YYINITIAL);
+    yypushback(1); // volta o caractere que não é espaço
+  }
+}
+
+<<EOF>>                       { if (this.pilha.peek() > 0) {
+                                  this.pilha.pop();
+                                  return symbol(ChocoPyTokens.DEDENT);
+                                }
+                                return symbol(ChocoPyTokens.EOF); }
 /* Error fallback. */
 [^]                           { return symbol(ChocoPyTokens.UNRECOGNIZED); }
