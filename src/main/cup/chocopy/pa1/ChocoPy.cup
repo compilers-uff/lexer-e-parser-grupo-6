@@ -388,7 +388,7 @@ literals ::= FALSE:f {: RESULT = new BooleanLiteral(fxleft,fxright,f); :}
                | TRUE: t {: RESULT = new BooleanLiteral(txleft,txright,t); :}
                | NONE: non {: RESULT = new NoneLiteral(nonxleft,nonxright); :}
                | STRING:str {: RESULT = new StringLiteral(strxleft,strxright,str.substring(1, str.length() - 1)); :}
-               | NUMBER:n       {: RESULT = new IntegerLiteral(nxleft, nxright, n); :}
+               | NUMBER:num       {: RESULT = new IntegerLiteral(numxleft, numxright, num); :}
                ;
 
 
