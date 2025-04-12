@@ -79,34 +79,6 @@ IntegerLiteral = 0 | [1-9][0-9]*
 
                                                 return symbol(ChocoPyTokens.NEWLINE); }
 
-  /* Literals. */
-  {IntegerLiteral}            { return symbol(ChocoPyTokens.NUMBER,
-                                                 Integer.parseInt(yytext())); }
-  {StringLiteral}             { return symbol(ChocoPyTokens.STRING, yytext()); }
-    /* Identifier. */
-    {Identifier}                { return symbol(ChocoPyTokens.IDENTIFIER, yytext()); }
-
-/* Operators. */
-  "->"                        { return symbol(ChocoPyTokens.ARROW, yytext()); }
-  "+"                         { return symbol(ChocoPyTokens.PLUS, yytext()); }
-  "-"                         { return symbol(ChocoPyTokens.MINUS, yytext()); }
-  "*"                         { return symbol(ChocoPyTokens.TIMES, yytext()); }
-  "//"                        { return symbol(ChocoPyTokens.FLOORDIV, yytext()); }
-  "%"                         { return symbol(ChocoPyTokens.MOD, yytext()); }
-  "<="                        { return symbol(ChocoPyTokens.LE, yytext()); }
-  ">="                        { return symbol(ChocoPyTokens.GE, yytext()); }
-  "=="                        { return symbol(ChocoPyTokens.EQ, yytext()); }
-  "!="                        { return symbol(ChocoPyTokens.NE, yytext()); }
-  "<"                         { return symbol(ChocoPyTokens.LT, yytext()); }
-  ">"                         { return symbol(ChocoPyTokens.GT, yytext()); }
-  "="                         { return symbol(ChocoPyTokens.ASSIGN, yytext()); }
-  "("                         { return symbol(ChocoPyTokens.LPAREN, yytext()); }
-  ")"                         { return symbol(ChocoPyTokens.RPAREN, yytext()); }
-  "["                         { return symbol(ChocoPyTokens.LBRACKET, yytext()); }
-  "]"                         { return symbol(ChocoPyTokens.RBRACKET, yytext()); }
-  ","                         { return symbol(ChocoPyTokens.COMMA, yytext()); }
-  ":"                         { return symbol(ChocoPyTokens.COLON, yytext()); }
-  "."                         { return symbol(ChocoPyTokens.DOT, yytext()); }
 
   /* Keywords. */
   "False"   { return symbol(ChocoPyTokens.FALSE, false); }
@@ -144,6 +116,36 @@ IntegerLiteral = 0 | [1-9][0-9]*
   "while"   { return symbol(ChocoPyTokens.WHILE, yytext()); }
   "with"    { return symbol(ChocoPyTokens.WITH, yytext()); }
   "yield"   { return symbol(ChocoPyTokens.YIELD, yytext()); }
+
+  /* Literals. */
+  {IntegerLiteral}            { return symbol(ChocoPyTokens.NUMBER,
+                                                 Integer.parseInt(yytext())); }
+  {StringLiteral}             { return symbol(ChocoPyTokens.STRING, yytext()); }
+    /* Identifier. */
+    {Identifier}                { return symbol(ChocoPyTokens.IDENTIFIER, yytext()); }
+
+/* Operators. */
+  "->"                        { return symbol(ChocoPyTokens.ARROW, yytext()); }
+  "+"                         { return symbol(ChocoPyTokens.PLUS, yytext()); }
+  "-"                         { return symbol(ChocoPyTokens.MINUS, yytext()); }
+  "*"                         { return symbol(ChocoPyTokens.TIMES, yytext()); }
+  "//"                        { return symbol(ChocoPyTokens.FLOORDIV, yytext()); }
+  "%"                         { return symbol(ChocoPyTokens.MOD, yytext()); }
+  "<="                        { return symbol(ChocoPyTokens.LE, yytext()); }
+  ">="                        { return symbol(ChocoPyTokens.GE, yytext()); }
+  "=="                        { return symbol(ChocoPyTokens.EQ, yytext()); }
+  "!="                        { return symbol(ChocoPyTokens.NE, yytext()); }
+  "<"                         { return symbol(ChocoPyTokens.LT, yytext()); }
+  ">"                         { return symbol(ChocoPyTokens.GT, yytext()); }
+  "="                         { return symbol(ChocoPyTokens.ASSIGN, yytext()); }
+  "("                         { return symbol(ChocoPyTokens.LPAREN, yytext()); }
+  ")"                         { return symbol(ChocoPyTokens.RPAREN, yytext()); }
+  "["                         { return symbol(ChocoPyTokens.LBRACKET, yytext()); }
+  "]"                         { return symbol(ChocoPyTokens.RBRACKET, yytext()); }
+  ","                         { return symbol(ChocoPyTokens.COMMA, yytext()); }
+  ":"                         { return symbol(ChocoPyTokens.COLON, yytext()); }
+  "."                         { return symbol(ChocoPyTokens.DOT, yytext()); }
+
 
   /* Whitespace. */
   {WhiteSpace}                { if (this.estado == 1) {
@@ -188,6 +190,10 @@ IntegerLiteral = 0 | [1-9][0-9]*
 }
 
 <<EOF>>                       { return symbol(ChocoPyTokens.EOF); }
+
+/* Error fallback. */
+[^]                           { return symbol(ChocoPyTokens.UNRECOGNIZED); }
+
 
 /* Error fallback. */
 [^]                           { return symbol(ChocoPyTokens.UNRECOGNIZED); }
