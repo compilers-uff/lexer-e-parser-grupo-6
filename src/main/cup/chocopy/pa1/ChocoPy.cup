@@ -215,26 +215,35 @@ terminal UNRECOGNIZED;
  * of type <type>. */
 non terminal Program           program;
 non terminal List<Declaration> program_head;
-non terminal List<Stmt>        stmt_list, opt_stmt_list;
+non terminal List<Stmt>        stmt_list, opt_stmt_list,block;
 non terminal List<Expr>        expr_list;
 non terminal List<Expr> chained_assigns;
-non terminal Stmt              stmt, expr_stmt, assign_stmt;
-non terminal Expr              expr, binary_expr, unary_expr,numeric_expr;
+non terminal Stmt              stmt,simple_stmt,elif_stmt;
+non terminal Expr              expr,cexpr;
 non terminal Identifier        identifier; 
-non terminal CompilerError     compiler_error;
 non terminal IndexExpr         index_expr;
 non terminal MemberExpr        member_expr;
+non terminal Literal           literals;
 
 /* Precedences (lowest to highest) for resolving what would otherwise be
  * ambiguities in the form of shift/reduce conflicts.. */
+precedence left OR;
+precedence left AND;
+precedence left NOT;
+precedence nonassoc EQ, NE, LT, GT, LE, GE, IS;
 precedence left PLUS, MINUS;
+precedence left TIMES, FLOORDIV, MOD;
 precedence left UMINUS;
+precedence left DOT, COMMA, LBRACKET, RBRACKET;
+precedence right IF, ELSE;
+precedence left LPAREN,RPAREN;
 
 /* The start symbol. */
 start with program;
 
 
 /*****  GRAMMAR RULES *****/
+
 
 program ::= program_head:d opt_stmt_list:s
         {: RESULT = new Program(d.isEmpty() ? getLeft(s) : getLeft(d),
@@ -261,21 +270,33 @@ stmt_list ::= stmt:s                 {: RESULT = single(s); :}
              * a syntax error. */
             ;
 
-stmt ::= expr_stmt:s NEWLINE {: RESULT = s; :}
-       | assign_stmt:a NEWLINE {: RESULT = a; :}
-              ;
+stmt ::= simple_stmt:s NEWLINE {: RESULT = s; :}
+       | IF:op expr:e COLON block:then elif_stmt {: RESULT = new IfStmt(opxleft,thenxright,e,then,empty()); :}
+       | IF:op expr:e COLON block:then elif_stmt ELSE block:elseblock {: RESULT = new IfStmt(opxleft,elseblockxright,e,then,elseblock); :}
+       | IF:op expr:e COLON block:then {: RESULT = new IfStmt(opxleft,thenxright,e,then,empty()); :}
+       | IF:op expr:e COLON block:then ELSE block:elseblock {: RESULT = new IfStmt(opxleft,elseblockxright,e,then,elseblock); :}
+       | WHILE:whileop expr:e COLON block:doblock {:  RESULT = new WhileStmt(whileopxleft,doblockxright,e,doblock); :}
+       | FOR:forop identifier:id IN expr:e COLON block:doblock {: RESULT = new ForStmt(foropxleft,doblockxright,id,e,doblock); :}
+       ;
 
-assign_stmt ::= chained_assigns:idlist ASSIGN identifier:id {: RESULT = new AssignStmt(idlistxleft,idxright,idlist,id); :}
-              | chained_assigns:idlist ASSIGN index_expr:ie {: RESULT = new AssignStmt(idlistxleft,iexright,idlist,ie); :}
-              | chained_assigns:idlist ASSIGN member_expr:me {: RESULT = new AssignStmt(idlistxleft,mexright,idlist,me); :}
+elif_stmt ::= elif_stmt ELIF:op expr:e COLON block:then {: RESULT = new IfStmt(opxleft,thenxright,e,then,empty()); :}
+            | ELIF:op expr:e COLON block:then {: RESULT = new IfStmt(opxleft,thenxright,e,then,empty()); :}
+            ;
+
+simple_stmt ::= PASS {: RESULT = null; :}
+              | expr:e {: RESULT = new ExprStmt(exleft,exright,e); :}
+              | RETURN expr:e {: RESULT = new ReturnStmt(exleft,exright,e); :}
+              | RETURN {: RESULT = null; :}
               | chained_assigns:idlist ASSIGN expr:e {: RESULT = new AssignStmt(idlistxleft,exright,idlist,e); :}
-              | compiler_error {: RESULT = null; :}
-              ; 
-
+              ;
 
 
 expr_stmt ::= expr:e    {: RESULT = new ExprStmt(exleft, exright, e); :}
             ;
+
+block ::= NEWLINE INDENT stmt_list:s DEDENT {: RESULT = s; :}
+        ;
+
 
 expr_list ::= expr:e                 {: RESULT = single(e); :}
             | expr_list:l COMMA expr:e    {: RESULT = combine(l, e); :}
@@ -284,37 +305,50 @@ expr_list ::= expr:e                 {: RESULT = single(e); :}
             ;
 
 
-expr ::= numeric_expr:e {: RESULT = e; :}
-       | identifier:id LPAREN expr_list:l RPAREN:rp {: RESULT = new CallExpr(idxleft,rpxright,id,l); :}
-       | STRING:str {: RESULT = new StringLiteral(strxleft,strxright,str); :}
-       | NONE: non {: RESULT = new NoneLiteral(nonxleft,nonxright); :}
-       | FALSE:f {: RESULT = new BooleanLiteral(fxleft,fxright,f); :}
-       | TRUE: t {: RESULT = new BooleanLiteral(txleft,txright,t); :}
-       | LBRACKET expr_list:l RBRACKET {: new ListExpr(lxleft,lxright,l); :} 
+expr ::= cexpr:e {: RESULT = e; :}
+       | NOT:op expr:e {: RESULT = new UnaryExpr(opxleft,exright,op,e); :}
+       | expr:e1 AND:op expr:e2 {: RESULT = new BinaryExpr(e1xleft,e2xright,e1,op,e2); :}
+       | expr:e1 IF expr:e2 ELSE expr:e3 {: RESULT = new IfExpr(e1xleft,e3xright,e2,e1,e3); :} 
        ;
 
-numeric_expr ::=  binary_expr:e  {: RESULT = e; :}
-               | unary_expr:e {: RESULT = e; :}
+
+literals ::= FALSE:f {: RESULT = new BooleanLiteral(fxleft,fxright,f); :}
+               | TRUE: t {: RESULT = new BooleanLiteral(txleft,txright,t); :}
+               | NONE: non {: RESULT = new NoneLiteral(nonxleft,nonxright); :}
+               | STRING:str {: RESULT = new StringLiteral(strxleft,strxright,str); :}
                | NUMBER:n       {: RESULT = new IntegerLiteral(nxleft, nxright, n); :}
                ;
 
-/* A binary expression, illustrating how to find the left and right
- * source position of a phrase. */
-binary_expr ::= numeric_expr:e1 PLUS:op numeric_expr:e2
-                        {: RESULT = new BinaryExpr(e1xleft, e2xright,
-                                                   e1, op, e2); :}
-              ;
-unary_expr ::= MINUS:op numeric_expr:e {: RESULT = new UnaryExpr(opxleft,exright,op,e); :}
-              %prec UMINUS
-              ;
+
+cexpr ::= literals:l {: RESULT = l; :}
+        | cexpr:e1 PLUS:op cexpr:e2 {: RESULT = new BinaryExpr(e1xleft, e2xright, e1, op, e2); :}
+        | cexpr:e1 MINUS:op cexpr:e2 {: RESULT = new BinaryExpr(e1xleft, e2xright, e1, op, e2); :}
+        | cexpr:e1 TIMES:op cexpr:e2 {: RESULT = new BinaryExpr(e1xleft, e2xright, e1, op, e2); :}
+        | cexpr:e1 FLOORDIV:op cexpr:e2 {: RESULT = new BinaryExpr(e1xleft, e2xright, e1, op, e2); :}
+        | cexpr:e1 MOD:op cexpr:e2 {: RESULT = new BinaryExpr(e1xleft, e2xright, e1, op, e2); :}
+        | cexpr:e1 LE:op cexpr:e2 {: RESULT = new BinaryExpr(e1xleft, e2xright, e1, op, e2); :}
+        | cexpr:e1 GE:op cexpr:e2 {: RESULT = new BinaryExpr(e1xleft, e2xright, e1, op, e2); :}
+        | cexpr:e1 EQ:op cexpr:e2 {: RESULT = new BinaryExpr(e1xleft, e2xright, e1, op, e2); :}
+        | cexpr:e1 NE:op cexpr:e2 {: RESULT = new BinaryExpr(e1xleft, e2xright, e1, op, e2); :}
+        | cexpr:e1 GT:op cexpr:e2 {: RESULT = new BinaryExpr(e1xleft, e2xright, e1, op, e2); :}
+        | cexpr:e1 LT:op cexpr:e2 {: RESULT = new BinaryExpr(e1xleft, e2xright, e1, op, e2); :}
+        | member_expr:me {: RESULT = me; :}
+        | index_expr:ie {: RESULT = ie; :}
+        | LBRACKET expr_list:l RBRACKET {: new ListExpr(lxleft,lxright,l); :} 
+        | member_expr:me LPAREN LBRACKET expr_list:l RBRACKET RPAREN:rp {: RESULT = new MethodCallExpr(mexleft,rpxright,me,l); :}
+        | identifier:id LPAREN expr_list:l RPAREN:rp {: RESULT = new CallExpr(idxleft,rpxright,id,l); :}
+        | MINUS:op cexpr:e {: RESULT = new UnaryExpr(opxleft, exright,op,e); :}
+        | LPAREN expr:e RPAREN {: RESULT = e; :}
+        | identifier:id {: RESULT = id; :}
+        ;
 
 identifier ::=  IDENTIFIER:id {: RESULT = new Identifier(idxleft,idxright,id); :}
             ;
 
-index_expr ::= identifier:id LBRACKET numeric_expr:e RBRACKET:rb {: RESULT = new IndexExpr(idxleft,rbxright,id,e); :}
+index_expr ::= cexpr:e1 LBRACKET expr:e2 RBRACKET:rb {: RESULT = new IndexExpr(e1xleft,rbxright,e1,e2); :}
              ;
 
-member_expr ::= identifier:obj DOT identifier:member {: RESULT = new MemberExpr(objxleft,memberxright,obj,member); :}
+member_expr ::= cexpr:obj DOT identifier:member {: RESULT = new MemberExpr(objxleft,memberxright,obj,member); :}
               ;
 
 chained_assigns ::= chained_assigns:l ASSIGN identifier:id {: RESULT = combine(l,id); :}
