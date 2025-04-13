@@ -19,7 +19,7 @@ import java.util.Stack;
 
 %eofclose false
 
-%state INDENT_CTRL
+%state INDENT_CTRL ESTADO
 
 /* Do not change the flags above unless you know what you are doing. */
 
@@ -62,7 +62,7 @@ import java.util.Stack;
 
 /* Macros (regexes used in rules below) */
 
-WhiteSpace = [ \t]
+WhiteSpace = [ \t]*
 LineBreak  = \r|\n|\r\n
 Identifier = (_|[a-z]|[A-Z])(_|[a-z]|[A-Z]|[0-9])*
 StringLiteral = \"[^]*\"
@@ -71,8 +71,18 @@ IntegerLiteral = 0 | [1-9][0-9]*
 
 %%
 
-
 <YYINITIAL> {
+  
+  {LineBreak}                 {}
+
+  [^] {
+    yypushback(1);
+    yybegin(ESTADO);
+  }
+
+}
+
+<ESTADO> {
 
   /* Delimiters. */
 
@@ -157,9 +167,10 @@ IntegerLiteral = 0 | [1-9][0-9]*
 
 <INDENT_CTRL> {
 
+  {LineBreak}                 {}
+
   {WhiteSpace} {
     this.whitesp = yytext();
-    this.leng = whitesp.length();
     this.qtde_whitesp = 0;
     this.qtde_tab = 0;
 
@@ -173,7 +184,7 @@ IntegerLiteral = 0 | [1-9][0-9]*
 
     if (pilha.peek() < leng) {
         pilha.push(leng);
-        yybegin(YYINITIAL);
+        yybegin(ESTADO);
         return symbol(ChocoPyTokens.INDENT, yytext());
     } else if (pilha.peek() > leng) {
         pilha.pop();
@@ -181,11 +192,11 @@ IntegerLiteral = 0 | [1-9][0-9]*
             yypushback(yylength());
             return symbol(ChocoPyTokens.DEDENT);
         }
-        yybegin(YYINITIAL);
+        yybegin(ESTADO);
         return symbol(ChocoPyTokens.DEDENT);
     }
 
-    yybegin(YYINITIAL);
+    yybegin(ESTADO);
   }
 
   [^] {
