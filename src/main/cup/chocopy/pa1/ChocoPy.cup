@@ -313,7 +313,7 @@ typed_var_list ::= typed_var:t {: RESULT = single(t); :}
 typed_var ::= identifier:id COLON type:ty {: RESULT = new TypedVar(idxleft,tyxright,id,ty); :}
             ;
 
-type ::= identifier:id {: RESULT = null; :}
+type ::= IDENTIFIER:id {: RESULT = new ClassType(idxleft,idxright,id); :}
        | LBRACKET type:t RBRACKET {: RESULT = t; :}
        ;
 
