@@ -421,7 +421,7 @@ cexpr ::= literals:l {: RESULT = l; :}
         | member_expr:me LPAREN LBRACKET expr_list:l RBRACKET RPAREN:rp {: RESULT = new MethodCallExpr(mexleft,rpxright,me,l); :}
         | identifier:id LPAREN expr_list:l RPAREN:rp {: RESULT = new CallExpr(idxleft,rpxright,id,l); :}
         | LBRACKET:l RBRACKET:r {: RESULT =  new ListExpr(lxleft,rxright,empty()); :} 
-        | member_expr:me LPAREN LBRACKET RBRACKET RPAREN:rp {: RESULT = new MethodCallExpr(mexleft,rpxright,me,empty()); :}
+        | member_expr:me LPAREN expr:e RPAREN:rp {: RESULT = new MethodCallExpr(mexleft,rpxright,me,single(e)); :}
         | identifier:id LPAREN RPAREN:rp {: RESULT = new CallExpr(idxleft,rpxright,id,empty()); :}
         | MINUS:op cexpr:e {: RESULT = new UnaryExpr(opxleft, exright,op,e); :}
         | LPAREN expr:e RPAREN {: RESULT = e; :}

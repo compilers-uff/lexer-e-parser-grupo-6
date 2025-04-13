@@ -65,7 +65,7 @@ import java.util.Stack;
 WhiteSpace = [ \t]*
 LineBreak  = \r|\n|\r\n
 Identifier = (_|[a-z]|[A-Z])(_|[a-z]|[A-Z]|[0-9])*
-StringLiteral = \"[^]*\"
+StringLiteral = \"[^]*\" 
 IdString = \"(_|[a-z]|[A-Z])(_|[a-z]|[A-Z]|[0-9])*\"
 IntegerLiteral = 0 | [1-9][0-9]*
 
