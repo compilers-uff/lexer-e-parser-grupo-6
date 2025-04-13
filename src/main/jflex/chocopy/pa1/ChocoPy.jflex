@@ -66,6 +66,7 @@ WhiteSpace = [ \t]
 LineBreak  = \r|\n|\r\n
 Identifier = (_|[a-z]|[A-Z])(_|[a-z]|[A-Z]|[0-9])*
 StringLiteral = \"[^]*\"
+IdString = \"(_|[a-z]|[A-Z])(_|[a-z]|[A-Z]|[0-9])*\"
 IntegerLiteral = 0 | [1-9][0-9]*
 
 %%
@@ -121,9 +122,11 @@ IntegerLiteral = 0 | [1-9][0-9]*
   /* Literals. */
   {IntegerLiteral}            { return symbol(ChocoPyTokens.NUMBER,
                                                  Integer.parseInt(yytext())); }
+  {IdString}                  {return symbol(ChocoPyTokens.IDSTRING,yytext()); }
   {StringLiteral}             { return symbol(ChocoPyTokens.STRING, yytext()); }
     /* Identifier. */
     {Identifier}                { return symbol(ChocoPyTokens.IDENTIFIER, yytext()); }
+
 
 /* Operators. */
   "->"                        { return symbol(ChocoPyTokens.ARROW, yytext()); }

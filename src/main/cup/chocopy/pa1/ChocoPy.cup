@@ -204,6 +204,7 @@ terminal String WHILE;
 terminal String WITH;
 terminal String YIELD;
 terminal String STRING;
+terminal String IDSTRING;
 /* Returned by the lexer for erroneous tokens.  Since it does not appear in
  * the grammar, it indicates a syntax error. */
 terminal UNRECOGNIZED;   
@@ -322,6 +323,7 @@ typed_var ::= identifier:id COLON type:ty {: RESULT = new TypedVar(idxleft,tyxri
 
 type ::= IDENTIFIER:id {: RESULT = new ClassType(idxleft,idxright,id); :}
        | LBRACKET type:t RBRACKET {: RESULT = t; :}
+       | IDSTRING:str {: RESULT = new ClassType(strxleft,strxright,str.substring(1, str.length() - 1)); :}
        ;
 
 global_decl ::= GLOBAL:first identifier:id NEWLINE:last {: RESULT = new GlobalDecl(firstxleft,lastxright,id); :}
