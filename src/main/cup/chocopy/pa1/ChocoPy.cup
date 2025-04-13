@@ -224,7 +224,7 @@ non terminal Identifier        identifier;
 non terminal IndexExpr         index_expr;
 non terminal MemberExpr        member_expr;
 non terminal Literal           literals;
-non terminal Declaration       declaration;
+non terminal Declaration       declaration,class_body_declaration;
 non terminal ClassDef          class_def;
 non terminal VarDef            var_def;
 non terminal FuncDef           func_def;
@@ -273,10 +273,17 @@ declaration ::= class_def:cd {: RESULT = cd; :}
 class_def ::= CLASS:cop identifier:id1 LPAREN identifier:id2 RPAREN COLON NEWLINE INDENT class_body:cb DEDENT:dde {: RESULT = new ClassDef(copxleft,ddexright,id1,id2,cb); :}
             ;
 
-class_body ::= PASS NEWLINE {: RESULT = null; :}
-             | var_def_list:vdl {: RESULT = vdl; :}
-             | func_def_list:fdl {: RESULT = fdl; :}
+class_body ::= class_body_declaration:d {: RESULT = single(d); :}
+                   | class_body:l class_body_declaration:d {: RESULT = combine(l,d); :}
+                   | class_body:l error     {: RESULT = l; :}
+                   ;
+
+class_body_declaration ::= PASS NEWLINE {: RESULT = null; :}
+             | var_def:vd {: RESULT = vd; :}
+             | func_def:fd {: RESULT = fd; :}
+             | NEWLINE {: RESULT = null; :}
              ;
+
 
 var_def_list ::= var_def:v {: RESULT = single(v); :}
                | var_def_list:l var_def:v {: RESULT = combine(l, v); :}
@@ -284,7 +291,7 @@ var_def_list ::= var_def:v {: RESULT = single(v); :}
                ;
 
 func_def_list ::= func_def:f {: RESULT = single(f); :}
-               | func_def_list:l var_def:f {: RESULT = combine(l, f); :}
+               | func_def_list:l func_def:f {: RESULT = combine(l, f); :}
                | func_def_list:l error     {: RESULT = l; :}
                ;
 
@@ -341,8 +348,7 @@ stmt_list ::= stmt:s                 {: RESULT = single(s); :}
             ;
 
 stmt ::= simple_stmt:s NEWLINE {: RESULT = s; :}
-       | IF:op expr:e COLON block:then elif_stmt {: RESULT = new IfStmt(opxleft,thenxright,e,then,empty()); :}
-       | IF:op expr:e COLON block:then elif_stmt ELSE COLON block:elseblock {: RESULT = new IfStmt(opxleft,elseblockxright,e,then,elseblock); :}
+       | IF:op expr:e COLON block:then elif_stmt:l {: RESULT = new IfStmt(opxleft,thenxright,e,then,single(l)); :}
        | IF:op expr:e COLON block:then {: RESULT = new IfStmt(opxleft,thenxright,e,then,empty()); :}
        | IF:op expr:e COLON block:then ELSE COLON block:elseblock {: RESULT = new IfStmt(opxleft,elseblockxright,e,then,elseblock); :}
        | WHILE:whileop expr:e COLON block:doblock {:  RESULT = new WhileStmt(whileopxleft,doblockxright,e,doblock); :}
@@ -350,7 +356,8 @@ stmt ::= simple_stmt:s NEWLINE {: RESULT = s; :}
        | NEWLINE {: RESULT = null; :}
        ;
 
-elif_stmt ::= elif_stmt ELIF:op expr:e COLON block:then {: RESULT = new IfStmt(opxleft,thenxright,e,then,empty()); :}
+elif_stmt ::= ELIF:op expr:e COLON block:then elif_stmt:l {: RESULT = new IfStmt(opxleft,thenxright,e,then,single(l)); :}
+            | ELIF:op expr:e COLON block:then ELSE COLON block:elseblock {: RESULT = new IfStmt(opxleft,thenxright,e,then,elseblock); :}
             | ELIF:op expr:e COLON block:then {: RESULT = new IfStmt(opxleft,thenxright,e,then,empty()); :}
             ;
 
