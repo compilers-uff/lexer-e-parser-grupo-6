@@ -400,6 +400,7 @@ literals ::= FALSE:f {: RESULT = new BooleanLiteral(fxleft,fxright,f); :}
                | NONE: non {: RESULT = new NoneLiteral(nonxleft,nonxright); :}
                | STRING:str {: RESULT = new StringLiteral(strxleft,strxright,str.substring(1, str.length() - 1)); :}
                | NUMBER:num       {: RESULT = new IntegerLiteral(numxleft, numxright, num); :}
+               | IDSTRING:str {: RESULT = new StringLiteral(strxleft,strxright,str.substring(1, str.length() - 1)); :}
                ;
 
 
