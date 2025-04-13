@@ -84,6 +84,8 @@ IntegerLiteral = 0 | [1-9][0-9]*
 
 <ESTADO> {
 
+  "#".*        { /* ignora linhas de comentário iniciadas com '#' */ }
+
   /* Delimiters. */
 
   // Estado 0 -> todo whitespace será ignorado.
