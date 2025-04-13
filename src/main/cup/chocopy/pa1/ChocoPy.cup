@@ -342,9 +342,9 @@ stmt_list ::= stmt:s                 {: RESULT = single(s); :}
 
 stmt ::= simple_stmt:s NEWLINE {: RESULT = s; :}
        | IF:op expr:e COLON block:then elif_stmt {: RESULT = new IfStmt(opxleft,thenxright,e,then,empty()); :}
-       | IF:op expr:e COLON block:then elif_stmt ELSE block:elseblock {: RESULT = new IfStmt(opxleft,elseblockxright,e,then,elseblock); :}
+       | IF:op expr:e COLON block:then elif_stmt ELSE COLON block:elseblock {: RESULT = new IfStmt(opxleft,elseblockxright,e,then,elseblock); :}
        | IF:op expr:e COLON block:then {: RESULT = new IfStmt(opxleft,thenxright,e,then,empty()); :}
-       | IF:op expr:e COLON block:then ELSE block:elseblock {: RESULT = new IfStmt(opxleft,elseblockxright,e,then,elseblock); :}
+       | IF:op expr:e COLON block:then ELSE COLON block:elseblock {: RESULT = new IfStmt(opxleft,elseblockxright,e,then,elseblock); :}
        | WHILE:whileop expr:e COLON block:doblock {:  RESULT = new WhileStmt(whileopxleft,doblockxright,e,doblock); :}
        | FOR:forop identifier:id IN expr:e COLON block:doblock {: RESULT = new ForStmt(foropxleft,doblockxright,id,e,doblock); :}
        | NEWLINE {: RESULT = null; :}
