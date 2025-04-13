@@ -72,6 +72,8 @@ IntegerLiteral = 0 | [1-9][0-9]*
 %%
 
 <YYINITIAL> {
+
+  /* No início do programa, todo NEWLINE é descartado. O primeiro caracter do programa que não é uma quebra de linha leva o lexer ao seu estado principal. */
   
   {LineBreak}                 {}
 
@@ -84,12 +86,11 @@ IntegerLiteral = 0 | [1-9][0-9]*
 
 <ESTADO> {
 
-  "#".*        { /* ignora linhas de comentário iniciadas com '#' */ }
+  "#".*        { /* ignora comentários */ }
 
   /* Delimiters. */
 
-  // Estado 0 -> todo whitespace será ignorado.
-  // Estado 1 -> houve uma quebra de linha, então o whitespace será tratado de forma diferente (será analisada a identação)
+  /* Sempre que ocorre uma quebra de linha no meio do programa, o lexer vai para o estado de controle de identação (onde são emitidos tokens INDENT e DEDENT) */
   {LineBreak}                 { yybegin(INDENT_CTRL);
                                                 return symbol(ChocoPyTokens.NEWLINE); }
 
@@ -136,8 +137,9 @@ IntegerLiteral = 0 | [1-9][0-9]*
                                                  Integer.parseInt(yytext())); }
   {IdString}                  {return symbol(ChocoPyTokens.IDSTRING,yytext()); }
   {StringLiteral}             { return symbol(ChocoPyTokens.STRING, yytext()); }
-    /* Identifier. */
-    {Identifier}                { return symbol(ChocoPyTokens.IDENTIFIER, yytext()); }
+
+  /* Identifier. */
+  {Identifier}                { return symbol(ChocoPyTokens.IDENTIFIER, yytext()); }
 
 
 /* Operators. */
@@ -169,13 +171,18 @@ IntegerLiteral = 0 | [1-9][0-9]*
 
 <INDENT_CTRL> {
 
+  /* Para chegar neste estado, necessariamente houve uma quebra de linha. Se outra quebra de linha é encontrada enquanto neste estado, é porque há ao menos duas quebras de linha seguidas. A linha de código abaixo ignora todos os NEWLINEs fora o primeiro(cujo token já foi emitido antes de entrar neste estado), pois não fazem diferença para o programa e dificultam a construção do lexer e do parser. */
+
   {LineBreak}                 {}
+
+  /* Após a quebra de linha, espera-se encontrar 0 ou mais espaços em branco. O trecho abaixo recebe todos os espaços em branco de uma vez e analisa se é necessário emitir um token INDENT ou DEDENT, utilizando o esquema de pilha indicado pela documentação do ChocoPy. */
 
   {WhiteSpace} {
     this.whitesp = yytext();
     this.qtde_whitesp = 0;
     this.qtde_tab = 0;
 
+    /* Conta a quantidade de espaços em branco propriamente ditos e de tabs e depois calcula o tamanho real do espaçamento, contando um tab como 8 espaços em branco. */
     for (int i = 0; i < whitesp.length(); i++) {
         char c = whitesp.charAt(i);
         if (c == ' ') qtde_whitesp++;
@@ -184,12 +191,20 @@ IntegerLiteral = 0 | [1-9][0-9]*
 
     this.leng = qtde_whitesp + 8 * qtde_tab;
 
+    /* Se o espalo em branco é maior que o topo da pilha de identação, é necessário emitir um INDENT*/
+
     if (pilha.peek() < leng) {
         pilha.push(leng);
         yybegin(ESTADO);
         return symbol(ChocoPyTokens.INDENT, yytext());
+
+    /* Se o espaço em branco é menor que o topo da pilha de identação, é necessário emitir um ou mais DEDENTs */
+
     } else if (pilha.peek() > leng) {
         pilha.pop();
+
+        /* Se, após emitir um DEDENT e retirar o topo da pilha, o espaço em branco ainda for menor que o topo da pilha, o WhiteSpace é rebobinado e será feita mais uma iteração desse algoritmo. Após qualquer emissão de INDENT ou DEDENT (ou nenhuma emissão, caso não haja mudança na identação), volta-se para o estado ESTADO, menos nesse caso. Por isso esse algoritmo é repetido. */
+
         if (pilha.peek() > leng) {
             yypushback(yylength());
             return symbol(ChocoPyTokens.DEDENT);
@@ -201,6 +216,8 @@ IntegerLiteral = 0 | [1-9][0-9]*
     yybegin(ESTADO);
   }
 
+  /* Se não houver qualquer espaço em branco no começo da linha, o lexer não vai cair no caso acima, mas ainda pode haver a necessidade de emitir DEDENTs. Nesse caso, a regra cai em qualquer caracter e executa um algoritmo similar ao descrito acima para emissão de DEDENTs, porém rebobinando sempre 1 caracter (o que foi consumido neste caso) */
+
   [^] {
     if (pilha.peek() > 0) {
         pilha.pop();
@@ -209,15 +226,16 @@ IntegerLiteral = 0 | [1-9][0-9]*
             return symbol(ChocoPyTokens.DEDENT);
         }
         yypushback(1);
-        yybegin(YYINITIAL);
+        yybegin(ESTADO);
         return symbol(ChocoPyTokens.DEDENT);
     }
-    yybegin(YYINITIAL);
+    yybegin(ESTADO);
     yypushback(1); // volta o caractere que não é espaço
   }
 }
 
-<<EOF>>                       { if (this.pilha.peek() > 0) {
+/* Ao final do programa, pode ser que haja DEDENTs a serem emitidos, mas que não foram porque não houve quebra de linha depois da última linha. Por isso, são emitidos aqui todos os tokens DEDENT restantes. */
+<<EOF>>                         { if (this.pilha.peek() > 0) {
                                   this.pilha.pop();
                                   return symbol(ChocoPyTokens.DEDENT);
                                 }
