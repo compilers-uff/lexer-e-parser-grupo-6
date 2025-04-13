@@ -390,6 +390,7 @@ expr_list ::= expr:e                 {: RESULT = single(e); :}
 expr ::= cexpr:e {: RESULT = e; :}
        | NOT:op expr:e {: RESULT = new UnaryExpr(opxleft,exright,op,e); :}
        | expr:e1 AND:op expr:e2 {: RESULT = new BinaryExpr(e1xleft,e2xright,e1,op,e2); :}
+       | expr:e1 OR:op expr:e2 {: RESULT = new BinaryExpr(e1xleft,e2xright,e1,op,e2); :}
        | expr:e1 IF expr:e2 ELSE expr:e3 {: RESULT = new IfExpr(e1xleft,e3xright,e2,e1,e3); :} 
        ;
 
