@@ -262,7 +262,7 @@ program ::= program_head:d opt_stmt_list:s {: RESULT = new Program(dxleft,sxrigh
 
 
 program_head ::= declaration:d {: RESULT = single(d); :}
-                   | program_head:l declaration:d {: RESULT = combine(l,d); :}
+                   | program_head:l declaration:d  {: RESULT = combine(l,d); :}
                    | program_head:l error     {: RESULT = l; :}
                    ;
 
@@ -300,6 +300,10 @@ func_def ::= DEF:first identifier:id LPAREN RPAREN COLON NEWLINE INDENT func_dec
            | DEF:first identifier:id LPAREN typed_var_list:tl RPAREN COLON NEWLINE INDENT func_declarations:d stmt_list:s DEDENT:last {: RESULT =  new FuncDef(firstxleft,lastxright,id,tl,null,d,s); :}
            | DEF:first identifier:id LPAREN  RPAREN ARROW type:ta COLON NEWLINE INDENT func_declarations:d stmt_list:s DEDENT:last {: RESULT =  new FuncDef(firstxleft,lastxright,id,empty(),ta,d,s); :}
            | DEF:first identifier:id LPAREN typed_var_list:tl RPAREN ARROW type:ta COLON NEWLINE INDENT func_declarations:d stmt_list:s DEDENT:last {: RESULT =  new FuncDef(firstxleft,lastxright,id,tl,ta,d,s); :}
+           | DEF:first identifier:id LPAREN RPAREN COLON NEWLINE INDENT  stmt_list:s DEDENT:last {: RESULT =  new FuncDef(firstxleft,lastxright,id,empty(),null,empty(),s); :}
+           | DEF:first identifier:id LPAREN typed_var_list:tl RPAREN COLON NEWLINE INDENT  stmt_list:s DEDENT:last {: RESULT =  new FuncDef(firstxleft,lastxright,id,tl,null,empty(),s); :}
+           | DEF:first identifier:id LPAREN  RPAREN ARROW type:ta COLON NEWLINE INDENT  stmt_list:s DEDENT:last {: RESULT =  new FuncDef(firstxleft,lastxright,id,empty(),ta,empty(),s); :}
+           | DEF:first identifier:id LPAREN typed_var_list:tl RPAREN ARROW type:ta COLON NEWLINE INDENT  stmt_list:s DEDENT:last {: RESULT =  new FuncDef(firstxleft,lastxright,id,tl,ta,empty(),s); :}
            ;
 
 func_declarations ::= global_decl:g                 {: RESULT = single(g); :}

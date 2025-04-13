@@ -157,6 +157,8 @@ IntegerLiteral = 0 | [1-9][0-9]*
 
 <INDENT_CTRL> {
 
+  {LineBreak}                 {}
+
   {WhiteSpace} {
     this.whitesp = yytext();
     this.leng = whitesp.length();
