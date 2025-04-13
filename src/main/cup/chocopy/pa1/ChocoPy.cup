@@ -296,12 +296,12 @@ func_def_list ::= func_def:f {: RESULT = single(f); :}
                | func_def_list:l error     {: RESULT = l; :}
                ;
 
-func_def ::= DEF:first identifier:id LPAREN RPAREN COLON NEWLINE INDENT func_declarations:d stmt_list:s DEDENT {: RESULT =  new FuncDef(firstxleft,sxright,id,empty(),null,d,s); :}
-           | DEF:first identifier:id LPAREN typed_var_list:tl RPAREN COLON NEWLINE INDENT func_declarations:d stmt_list:s DEDENT {: RESULT =  new FuncDef(firstxleft,sxright,id,tl,null,d,s); :}
+func_def ::= DEF:first identifier:id LPAREN RPAREN COLON:col NEWLINE INDENT func_declarations:d stmt_list:s DEDENT {: RESULT =  new FuncDef(firstxleft,sxright,id,empty(),new ClassType(colxright,colxright,"<None>"),d,s); :}
+           | DEF:first identifier:id LPAREN typed_var_list:tl RPAREN COLON:col NEWLINE INDENT func_declarations:d stmt_list:s DEDENT {: RESULT =  new FuncDef(firstxleft,sxright,id,tl,new ClassType(colxright,colxright,"<None>"),d,s); :}
            | DEF:first identifier:id LPAREN  RPAREN ARROW type:ta COLON NEWLINE INDENT func_declarations:d stmt_list:s DEDENT {: RESULT =  new FuncDef(firstxleft,sxright,id,empty(),ta,d,s); :}
            | DEF:first identifier:id LPAREN typed_var_list:tl RPAREN ARROW type:ta COLON NEWLINE INDENT func_declarations:d stmt_list:s DEDENT {: RESULT =  new FuncDef(firstxleft,sxright,id,tl,ta,d,s); :}
-           | DEF:first identifier:id LPAREN RPAREN COLON NEWLINE INDENT stmt_list:s DEDENT {: RESULT =  new FuncDef(firstxleft,sxright,id,empty(),null,empty(),s); :}
-           | DEF:first identifier:id LPAREN typed_var_list:tl RPAREN COLON NEWLINE INDENT stmt_list:s DEDENT {: RESULT =  new FuncDef(firstxleft,sxright,id,tl,null,empty(),s); :}
+           | DEF:first identifier:id LPAREN RPAREN COLON:col NEWLINE INDENT stmt_list:s DEDENT {: RESULT =  new FuncDef(firstxleft,sxright,id,empty(),new ClassType(colxright,colxright,"<None>"),empty(),s); :}
+           | DEF:first identifier:id LPAREN typed_var_list:tl RPAREN COLON:col NEWLINE INDENT stmt_list:s DEDENT {: RESULT =  new FuncDef(firstxleft,sxright,id,tl,new ClassType(colxright,colxright,"<None>"),empty(),s); :}
            | DEF:first identifier:id LPAREN  RPAREN ARROW type:ta COLON NEWLINE INDENT stmt_list:s DEDENT {: RESULT =  new FuncDef(firstxleft,sxright,id,empty(),ta,empty(),s); :}
            | DEF:first identifier:id LPAREN typed_var_list:tl RPAREN ARROW type:ta COLON NEWLINE INDENT stmt_list:s DEDENT {: RESULT =  new FuncDef(firstxleft,sxright,id,tl,ta,empty(),s); :}
            ;
@@ -336,7 +336,7 @@ global_decl ::= GLOBAL:first identifier:id NEWLINE:last {: RESULT = new GlobalDe
 nonlocal_decl ::= NONLOCAL:first identifier:id NEWLINE:last {: RESULT = new NonLocalDecl(firstxleft,lastxright,id); :}
                 ;
 
-var_def ::= typed_var:ty ASSIGN literals:value NEWLINE:last {: RESULT = new VarDef(tyxleft,lastxright,ty,value); :}
+var_def ::= typed_var:ty ASSIGN literals:value NEWLINE:last {: RESULT = new VarDef(tyxleft,valuexright,ty,value); :}
           ;
 
 opt_stmt_list ::=                    {: RESULT = empty(); :}
