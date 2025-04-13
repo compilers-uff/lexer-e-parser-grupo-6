@@ -296,14 +296,14 @@ func_def_list ::= func_def:f {: RESULT = single(f); :}
                | func_def_list:l error     {: RESULT = l; :}
                ;
 
-func_def ::= DEF:first identifier:id LPAREN RPAREN COLON:col NEWLINE INDENT func_declarations:d stmt_list:s DEDENT {: RESULT =  new FuncDef(firstxleft,sxright,id,empty(),new ClassType(colxright,colxright,"<None>"),d,s); :}
-           | DEF:first identifier:id LPAREN typed_var_list:tl RPAREN COLON:col NEWLINE INDENT func_declarations:d stmt_list:s DEDENT {: RESULT =  new FuncDef(firstxleft,sxright,id,tl,new ClassType(colxright,colxright,"<None>"),d,s); :}
-           | DEF:first identifier:id LPAREN  RPAREN ARROW type:ta COLON NEWLINE INDENT func_declarations:d stmt_list:s DEDENT {: RESULT =  new FuncDef(firstxleft,sxright,id,empty(),ta,d,s); :}
-           | DEF:first identifier:id LPAREN typed_var_list:tl RPAREN ARROW type:ta COLON NEWLINE INDENT func_declarations:d stmt_list:s DEDENT {: RESULT =  new FuncDef(firstxleft,sxright,id,tl,ta,d,s); :}
-           | DEF:first identifier:id LPAREN RPAREN COLON:col NEWLINE INDENT stmt_list:s DEDENT {: RESULT =  new FuncDef(firstxleft,sxright,id,empty(),new ClassType(colxright,colxright,"<None>"),empty(),s); :}
-           | DEF:first identifier:id LPAREN typed_var_list:tl RPAREN COLON:col NEWLINE INDENT stmt_list:s DEDENT {: RESULT =  new FuncDef(firstxleft,sxright,id,tl,new ClassType(colxright,colxright,"<None>"),empty(),s); :}
-           | DEF:first identifier:id LPAREN  RPAREN ARROW type:ta COLON NEWLINE INDENT stmt_list:s DEDENT {: RESULT =  new FuncDef(firstxleft,sxright,id,empty(),ta,empty(),s); :}
-           | DEF:first identifier:id LPAREN typed_var_list:tl RPAREN ARROW type:ta COLON NEWLINE INDENT stmt_list:s DEDENT {: RESULT =  new FuncDef(firstxleft,sxright,id,tl,ta,empty(),s); :}
+func_def ::= DEF:first identifier:id LPAREN RPAREN COLON:col NEWLINE INDENT func_declarations:d stmt_list:s DEDENT:last {: RESULT =  new FuncDef(firstxleft,lastxright,id,empty(),new ClassType(colxright,colxright,"<None>"),d,s); :}
+           | DEF:first identifier:id LPAREN typed_var_list:tl RPAREN COLON:col NEWLINE INDENT func_declarations:d stmt_list:s DEDENT:last {: RESULT =  new FuncDef(firstxleft,lastxright,id,tl,new ClassType(colxright,colxright,"<None>"),d,s); :}
+           | DEF:first identifier:id LPAREN  RPAREN ARROW type:ta COLON NEWLINE INDENT func_declarations:d stmt_list:s DEDENT:last {: RESULT =  new FuncDef(firstxleft,lastxright,id,empty(),ta,d,s); :}
+           | DEF:first identifier:id LPAREN typed_var_list:tl RPAREN ARROW type:ta COLON NEWLINE INDENT func_declarations:d stmt_list:s DEDENT:last {: RESULT =  new FuncDef(firstxleft,lastxright,id,tl,ta,d,s); :}
+           | DEF:first identifier:id LPAREN RPAREN COLON:col NEWLINE INDENT stmt_list:s DEDENT:last {: RESULT =  new FuncDef(firstxleft,lastxright,id,empty(),new ClassType(colxright,colxright,"<None>"),empty(),s); :}
+           | DEF:first identifier:id LPAREN typed_var_list:tl RPAREN COLON:col NEWLINE INDENT stmt_list:s DEDENT:last {: RESULT =  new FuncDef(firstxleft,lastxright,id,tl,new ClassType(colxright,colxright,"<None>"),empty(),s); :}
+           | DEF:first identifier:id LPAREN  RPAREN ARROW type:ta COLON NEWLINE INDENT stmt_list:s DEDENT:last {: RESULT =  new FuncDef(firstxleft,lastxright,id,empty(),ta,empty(),s); :}
+           | DEF:first identifier:id LPAREN typed_var_list:tl RPAREN ARROW type:ta COLON NEWLINE INDENT stmt_list:s DEDENT:last {: RESULT =  new FuncDef(firstxleft,lastxright,id,tl,ta,empty(),s); :}
            ;
 
 func_declarations ::= global_decl:g                 {: RESULT = single(g); :}
@@ -326,14 +326,14 @@ typed_var ::= identifier:id COLON type:ty {: RESULT = new TypedVar(idxleft,tyxri
             ;
 
 type ::= IDENTIFIER:id {: RESULT = new ClassType(idxleft,idxright,id); :}
-       | LBRACKET type:t RBRACKET {: RESULT = t; :}
+       | LBRACKET:first type:t RBRACKET:last {: RESULT = new ListType(firstxleft,lastxright,t); :}
        | IDSTRING:str {: RESULT = new ClassType(strxleft,strxright,str.substring(1, str.length() - 1)); :}
        ;
 
-global_decl ::= GLOBAL:first identifier:id NEWLINE:last {: RESULT = new GlobalDecl(firstxleft,lastxright,id); :}
+global_decl ::= GLOBAL:first identifier:id NEWLINE {: RESULT = new GlobalDecl(firstxleft,idxright,id); :}
               ;
 
-nonlocal_decl ::= NONLOCAL:first identifier:id NEWLINE:last {: RESULT = new NonLocalDecl(firstxleft,lastxright,id); :}
+nonlocal_decl ::= NONLOCAL:first identifier:id NEWLINE {: RESULT = new NonLocalDecl(firstxleft,idxright,id); :}
                 ;
 
 var_def ::= typed_var:ty ASSIGN literals:value NEWLINE:last {: RESULT = new VarDef(tyxleft,valuexright,ty,value); :}
@@ -420,7 +420,7 @@ cexpr ::= literals:l {: RESULT = l; :}
         | member_expr:me {: RESULT = me; :}
         | index_expr:ie {: RESULT = ie; :}
         | LBRACKET:first expr_list:l RBRACKET:r {:RESULT =  new ListExpr(firstxleft,rxright,l); :} 
-        | member_expr:me LPAREN LBRACKET expr_list:l RBRACKET RPAREN:rp {: RESULT = new MethodCallExpr(mexleft,rpxright,me,l); :}
+        | member_expr:me LPAREN expr_list:l RPAREN:rp {: RESULT = new MethodCallExpr(mexleft,rpxright,me,l); :}
         | identifier:id LPAREN expr_list:l RPAREN:rp {: RESULT = new CallExpr(idxleft,rpxright,id,l); :}
         | LBRACKET:l RBRACKET:r {: RESULT =  new ListExpr(lxleft,rxright,empty()); :} 
         | member_expr:me LPAREN expr:e RPAREN:rp {: RESULT = new MethodCallExpr(mexleft,rpxright,me,single(e)); :}
