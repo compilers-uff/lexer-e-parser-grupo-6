@@ -216,7 +216,7 @@ terminal UNRECOGNIZED;
 non terminal Program           program;
 non terminal List<Declaration> program_head,declaration_list,class_body,var_def_list,func_def_list,func_declarations;
 non terminal List<Stmt>        stmt_list, opt_stmt_list,block;
-non terminal List<Expr>        expr_list,opt_expr_list;
+non terminal List<Expr>        expr_list;
 non terminal List<Expr> chained_assigns;
 non terminal Stmt              stmt,simple_stmt,elif_stmt;
 non terminal Expr              expr,cexpr;
@@ -368,14 +368,11 @@ block ::= NEWLINE INDENT stmt_list:s DEDENT {: RESULT = s; :}
 
 
 expr_list ::= expr:e                 {: RESULT = single(e); :}
-            | expr_list:l COMMA expr:e    {: RESULT = combine(l, e); :}
-            | expr_list:l expr:e    {: RESULT = combine(l, e); :}
-            | expr_list:l error      {: RESULT = l; :}
+            | expr_list:l COMMA expr:e   {: RESULT = combine(l,e); :}
+            | expr_list:l error    {: RESULT = l; :}
             ;
 
-opt_expr_list ::=   {: RESULT = empty(); :}
-                | expr_list:l {: RESULT = l; :}
-                ;
+
 
 expr ::= cexpr:e {: RESULT = e; :}
        | NOT:op expr:e {: RESULT = new UnaryExpr(opxleft,exright,op,e); :}
@@ -406,9 +403,12 @@ cexpr ::= literals:l {: RESULT = l; :}
         | cexpr:e1 LT:op cexpr:e2 {: RESULT = new BinaryExpr(e1xleft, e2xright, e1, op, e2); :}
         | member_expr:me {: RESULT = me; :}
         | index_expr:ie {: RESULT = ie; :}
-        | LBRACKET opt_expr_list:l RBRACKET {: new ListExpr(lxleft,lxright,l); :} 
-        | member_expr:me LPAREN LBRACKET opt_expr_list:l RBRACKET RPAREN:rp {: RESULT = new MethodCallExpr(mexleft,rpxright,me,l); :}
-        | identifier:id LPAREN opt_expr_list:l RPAREN:rp {: RESULT = new CallExpr(idxleft,rpxright,id,l); :}
+        | LBRACKET:first expr_list:l RBRACKET:r {:RESULT =  new ListExpr(firstxleft,rxright,l); :} 
+        | member_expr:me LPAREN LBRACKET expr_list:l RBRACKET RPAREN:rp {: RESULT = new MethodCallExpr(mexleft,rpxright,me,l); :}
+        | identifier:id LPAREN expr_list:l RPAREN:rp {: RESULT = new CallExpr(idxleft,rpxright,id,l); :}
+        | LBRACKET:l RBRACKET:r {: RESULT =  new ListExpr(lxleft,rxright,empty()); :} 
+        | member_expr:me LPAREN LBRACKET RBRACKET RPAREN:rp {: RESULT = new MethodCallExpr(mexleft,rpxright,me,empty()); :}
+        | identifier:id LPAREN RPAREN:rp {: RESULT = new CallExpr(idxleft,rpxright,id,empty()); :}
         | MINUS:op cexpr:e {: RESULT = new UnaryExpr(opxleft, exright,op,e); :}
         | LPAREN expr:e RPAREN {: RESULT = e; :}
         | identifier:id {: RESULT = id; :}
