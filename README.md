@@ -48,8 +48,26 @@ To sync with updates upstream:
 
 ## Submission writeup
 
-Team member 1: 
+Team member 1: Dário Chen Chen Ye
 
-Team member 2: 
+Team member 2: Fellipe Carvalho Pombo Lima
+
+Team member 3: Leonardo Meato Fernandes
 
 (Students should edit this section with their write-up)
+
+Projeto desenvolvido em X horas.
+
+Respostas às perguntas:
+
+1) 	O controle de identação do lexer foi feito no estado INDENT_CTRL, que vai da linha 172 à 235, sendo que o acesso a esse estado é feito na linha 94. Também há uma parte dos tokens que é emitida no EOF, da linha 238 à 242.
+
+	A estratégia foi a seguinte: toda vez que uma linha é quebrada (enquanto no estado principal do lexer), o analisador vai para o estado INDENT_CTRL, no qual os espaços em branco são contados. Na seção de declarações do jflex, há algumas variáveis declaradas, sendo a principal delas a pilha de identação, que começa com um 0. Após a contagem dos espaços em branco, compara-se o topo da pilha de identação com a quantidade contada: caso a quantidade seja maior que a do topo da pilha, essa quantidade é adicionada ao topo da pilha e é emitido um token INDENT;caso a quantidade seja igual, nada acontece; caso a quantidade seja menor, o topo da pilha é descartado e é emitido um token DEDENT. Em todos esses casos, logo após a operação descrita volta-se para o estado principal, a não ser que, após a emissão do DEDENT, a quantidade de espaços em branco ainda seja menor que o topo da pilha. Nesse caso, utiliza-se a função yypushback() para voltar ao começo do espaço em branco e não é feita mudança de estado, forçando o algoritmo descrito a ser executado novamente, até que a identação esteja correta.
+
+	No entanto, a contagem de espaços em branco só será feita caso haja espaços em branco e a regra {WhiteSpace} seja requisitada. Se esse não for o caso, é porque a identação é 0, então são emitidos quantos DEDENTs forem necessários, seguindo uma lógica parecida com a descrita acima, porém dando sempre um pushback(1) para não contar o caracter que não é um espaço em branco como consumido.
+
+	Além disso, é possível que o programa acabe com DEDENTs ainda para serem emitidos, porém sem uma quebra de linha no fim do programa. Nesse caso, o estado INDENT_CTRL não será acionado. Para isso, há um pequeno trecho no EOF para emitir os tokens restantes.
+
+	Há também mecanismos para eliminar NEWLINEs redundantes, para que não seja emitido DEDENT INDENT dentro de um mesmo bloco por conta de uma quebra de linha desnecessária, por exemplo.
+
+2) 	A relação é muito grande. O algoritmo descrito pelo manual do ChocoPy foi seguido praticamente à risca.
