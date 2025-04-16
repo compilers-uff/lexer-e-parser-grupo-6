@@ -143,8 +143,68 @@ action code {:
  * in actions ( {: ... :} ).
  */
 terminal NEWLINE;
-terminal String PLUS; 
-terminal Integer NUMBER; 
+terminal INDENT;
+terminal DEDENT;
+terminal String UMINUS;
+terminal Integer NUMBER;
+terminal String IDENTIFIER;
+terminal String ARROW;
+terminal String PLUS;
+terminal String MINUS;
+terminal String TIMES;
+terminal String FLOORDIV;
+terminal String MOD;
+terminal String LE;
+terminal String GE;
+terminal String EQ;
+terminal String NE;
+terminal String LT;
+terminal String GT;
+terminal String ASSIGN;
+terminal String LPAREN;
+terminal String RPAREN;
+terminal String LBRACKET;
+terminal String RBRACKET;
+terminal String COMMA;
+terminal String COLON;
+terminal String DOT;
+terminal boolean FALSE;
+terminal String NONE;
+terminal boolean TRUE;
+terminal String AND;
+terminal String AS;
+terminal String ASSERT;
+terminal String ASYNC;
+terminal String AWAIT;
+terminal String BREAK;
+terminal String CLASS;
+terminal String CONTINUE;
+terminal String DEF;
+terminal String DEL;
+terminal String ELIF;
+terminal String ELSE;
+terminal String EXCEPT;
+terminal String FINALLY;
+terminal String FOR;
+terminal String FROM;
+terminal String GLOBAL;
+terminal String IF;
+terminal String IMPORT;
+terminal String IN;
+terminal String IS;
+terminal String LAMBDA;
+terminal String NONLOCAL;
+terminal String NOT;
+terminal String OR;
+terminal String PASS;
+terminal String RAISE;
+terminal String RETURN;
+terminal String TRY;
+terminal String WHILE;
+terminal String WITH;
+terminal String YIELD;
+terminal String STRING;
+terminal String IDSTRING;
 /* Returned by the lexer for erroneous tokens.  Since it does not appear in
  * the grammar, it indicates a syntax error. */
 terminal UNRECOGNIZED;   
@@ -155,14 +215,39 @@ terminal UNRECOGNIZED;
  * defines the listed nonterminal identifier symbols to have semantic values
  * of type <type>. */
 non terminal Program           program;
-non terminal List<Declaration> program_head;
-non terminal List<Stmt>        stmt_list, opt_stmt_list;
-non terminal Stmt              stmt, expr_stmt;
-non terminal Expr              expr, binary_expr;
+non terminal List<Declaration> program_head,declaration_list,class_body,func_declarations;
+non terminal List<Stmt>        stmt_list, opt_stmt_list,block;
+non terminal List<Expr>        expr_list;
+non terminal List<Expr> chained_assigns;
+non terminal Stmt              stmt,simple_stmt,elif_stmt;
+non terminal Expr              expr,cexpr;
+non terminal Identifier        identifier; 
+non terminal IndexExpr         index_expr;
+non terminal MemberExpr        member_expr;
+non terminal Literal           literals;
+non terminal Declaration       declaration,class_body_declaration;
+non terminal ClassDef          class_def;
+non terminal VarDef            var_def;
+non terminal FuncDef           func_def;
+non terminal TypedVar          typed_var;
+non terminal TypeAnnotation   type;
+non terminal GlobalDecl        global_decl;
+non terminal NonLocalDecl      nonlocal_decl;
+non terminal List<TypedVar>    typed_var_list;
+
 
 /* Precedences (lowest to highest) for resolving what would otherwise be
  * ambiguities in the form of shift/reduce conflicts.. */
-precedence left PLUS;
+precedence left OR;
+precedence left AND;
+precedence left NOT;
+precedence nonassoc EQ, NE, LT, GT, LE, GE, IS;
+precedence left PLUS, MINUS;
+precedence left TIMES, FLOORDIV, MOD;
+precedence left UMINUS;
+precedence left DOT, COMMA, LBRACKET, RBRACKET;
+precedence right IF, ELSE;
+precedence left LPAREN,RPAREN;
 
 /* The start symbol. */
 start with program;
@@ -170,16 +255,92 @@ start with program;
 
 /*****  GRAMMAR RULES *****/
 
-program ::= program_head:d opt_stmt_list:s
-        {: RESULT = new Program(d.isEmpty() ? getLeft(s) : getLeft(d),
-                                sxright, d, s, errors);
-        :}
-        ;
 
-/* Initial list of declarations. */
-program_head ::= /* not implemented; currently matches empty string */
-                                     {: RESULT = empty(); :}
+program ::= program_head:d opt_stmt_list:s {: RESULT = new Program(dxleft,sxright, d, s, errors); :}
+          | opt_stmt_list:s {: RESULT = new Program(sxleft,sxright, empty(), s, errors); :}
+          ;
+
+
+/* separa parte do programa onde todas declarações estão
+             * aplica recursão pela esquerda para conter múltiplas declarações */
+program_head ::= declaration:d {: RESULT = single(d); :}
+                   | program_head:l declaration:d  {: RESULT = combine(l,d); :}
+                   | program_head:l error     {: RESULT = l; :}
+                   ;
+
+declaration ::= class_def:cd {: RESULT = cd; :}
+              | func_def:fd {: RESULT = fd; :}
+              | var_def:vd {: RESULT = vd; :}
+              ;
+
+class_def ::= CLASS:cop identifier:id1 LPAREN identifier:id2 RPAREN COLON NEWLINE INDENT class_body:cb DEDENT:dde {: RESULT = new ClassDef(copxleft,ddexright,id1,id2,cb); :}
+            ;
+
+/* separa parte da classe onde todas declarações estão
+             * aplica recursão pela esquerda para conter múltiplas declarações */
+class_body ::= class_body_declaration:d {: RESULT = single(d); :}
+                   | class_body:l class_body_declaration:d {: RESULT = combine(l,d); :}
+                   | class_body:l error     {: RESULT = l; :}
+                   ;
+
+/* define declarações consideradas válidas dentro da classe
+             * caso newline é ignorado */
+class_body_declaration ::= PASS NEWLINE {: RESULT = null; :}
+             | var_def:vd {: RESULT = vd; :}
+             | func_def:fd {: RESULT = fd; :}
+             | NEWLINE {: RESULT = null; :}
+             ;
+
+
+/* define todas possibilidades válidas para definição de função
+             * inclui quando há tipagem do retorno ou não, tem ou não parâmetros e quando tem ou não declarações */
+func_def ::= DEF:first identifier:id LPAREN RPAREN COLON:col NEWLINE INDENT func_declarations:d stmt_list:s DEDENT:last {: RESULT =  new FuncDef(firstxleft,lastxright,id,empty(),new ClassType(colxright,colxright,"<None>"),d,s); :}
+           | DEF:first identifier:id LPAREN typed_var_list:tl RPAREN COLON:col NEWLINE INDENT func_declarations:d stmt_list:s DEDENT:last {: RESULT =  new FuncDef(firstxleft,lastxright,id,tl,new ClassType(colxright,colxright,"<None>"),d,s); :}
+           | DEF:first identifier:id LPAREN  RPAREN ARROW type:ta COLON NEWLINE INDENT func_declarations:d stmt_list:s DEDENT:last {: RESULT =  new FuncDef(firstxleft,lastxright,id,empty(),ta,d,s); :}
+           | DEF:first identifier:id LPAREN typed_var_list:tl RPAREN ARROW type:ta COLON NEWLINE INDENT func_declarations:d stmt_list:s DEDENT:last {: RESULT =  new FuncDef(firstxleft,lastxright,id,tl,ta,d,s); :}
+           | DEF:first identifier:id LPAREN RPAREN COLON:col NEWLINE INDENT stmt_list:s DEDENT:last {: RESULT =  new FuncDef(firstxleft,lastxright,id,empty(),new ClassType(colxright,colxright,"<None>"),empty(),s); :}
+           | DEF:first identifier:id LPAREN typed_var_list:tl RPAREN COLON:col NEWLINE INDENT stmt_list:s DEDENT:last {: RESULT =  new FuncDef(firstxleft,lastxright,id,tl,new ClassType(colxright,colxright,"<None>"),empty(),s); :}
+           | DEF:first identifier:id LPAREN  RPAREN ARROW type:ta COLON NEWLINE INDENT stmt_list:s DEDENT:last {: RESULT =  new FuncDef(firstxleft,lastxright,id,empty(),ta,empty(),s); :}
+           | DEF:first identifier:id LPAREN typed_var_list:tl RPAREN ARROW type:ta COLON NEWLINE INDENT stmt_list:s DEDENT:last {: RESULT =  new FuncDef(firstxleft,lastxright,id,tl,ta,empty(),s); :}
+           ;
+
+/* define as declarações válidas para definição de função
+             * aplica a recursão pela esquerda para múltiplas declarações */
+func_declarations ::= global_decl:g                 {: RESULT = single(g); :}
+            | nonlocal_decl:nl                 {: RESULT = single(nl); :}
+            | var_def:v                 {: RESULT = single(v); :}
+            | func_def:f                 {: RESULT = single(f); :}
+            | func_declarations:l global_decl:g      {: RESULT = combine(l, g); :}
+            | func_declarations:l nonlocal_decl:nl     {: RESULT = combine(l, nl); :}
+            | func_declarations:l var_def:v      {: RESULT = combine(l, v); :}
+            | func_declarations:l func_def:f      {: RESULT = combine(l, f); :}
+            | func_declarations:l error     {: RESULT = l; :}
+            ;
+
+
+/* define lista de declarações de variável tipada
+             * aplica a recursão pela esquerda para múltiplas declarações de variável tipada */
+typed_var_list ::= typed_var:t {: RESULT = single(t); :}
+                 | typed_var_list:l COMMA typed_var:t {: RESULT = combine(l,t); :}
+                 | typed_var_list:l error {: RESULT = l; :}
+                 ;
+
+typed_var ::= identifier:id COLON type:ty {: RESULT = new TypedVar(idxleft,tyxright,id,ty); :}
+            ;
+
+type ::= IDENTIFIER:id {: RESULT = new ClassType(idxleft,idxright,id); :}
+       | LBRACKET:first type:t RBRACKET:last {: RESULT = new ListType(firstxleft,lastxright,t); :}
+       | IDSTRING:str {: RESULT = new ClassType(strxleft,strxright,str.substring(1, str.length() - 1)); :}
+       ;
+
+global_decl ::= GLOBAL:first identifier:id NEWLINE {: RESULT = new GlobalDecl(firstxleft,idxright,id); :}
+              ;
+
+nonlocal_decl ::= NONLOCAL:first identifier:id NEWLINE {: RESULT = new NonLocalDecl(firstxleft,idxright,id); :}
                 ;
+
+var_def ::= typed_var:ty ASSIGN literals:value NEWLINE:last {: RESULT = new VarDef(tyxleft,valuexright,ty,value); :}
+          ;
 
 opt_stmt_list ::=                    {: RESULT = empty(); :}
                 | stmt_list:s        {: RESULT = s; :}
@@ -187,28 +348,104 @@ opt_stmt_list ::=                    {: RESULT = empty(); :}
 
 stmt_list ::= stmt:s                 {: RESULT = single(s); :}
             | stmt_list:l stmt:s     {: RESULT = combine(l, s); :}
-            | stmt_list:l error      {: RESULT = l; :}
-            /* If there is a syntax error in the source, this says to discard
-             * symbols from the parsing stack and perform reductions until
-             * there is a stmt_list on top of the stack, and then to discard
-             * input symbols until it is possible to shift again, reporting
-             * a syntax error. */
+            | stmt_list:l error     {: RESULT = l; :}
             ;
 
-stmt ::= expr_stmt:s NEWLINE {: RESULT = s; :}
+stmt ::= simple_stmt:s NEWLINE {: RESULT = s; :}
+       | IF:op expr:e COLON block:then elif_stmt:l {: RESULT = new IfStmt(opxleft,thenxright,e,then,single(l)); :}
+       | IF:op expr:e COLON block:then {: RESULT = new IfStmt(opxleft,thenxright,e,then,empty()); :}
+       | IF:op expr:e COLON block:then ELSE COLON block:elseblock {: RESULT = new IfStmt(opxleft,elseblockxright,e,then,elseblock); :}
+       | WHILE:whileop expr:e COLON block:doblock {:  RESULT = new WhileStmt(whileopxleft,doblockxright,e,doblock); :}
+       | FOR:forop identifier:id IN expr:e COLON block:doblock {: RESULT = new ForStmt(foropxleft,doblockxright,id,e,doblock); :}
+       | NEWLINE {: RESULT = null; :}
+       ;
+
+/* define casos válidos para ifs aninhados, com elif e else
+             * aplica a recursão para elifs seguidos e também define casos finais else e sem else*/
+elif_stmt ::= ELIF:op expr:e COLON block:then elif_stmt:l {: RESULT = new IfStmt(opxleft,thenxright,e,then,single(l)); :}
+            | ELIF:op expr:e COLON block:then ELSE COLON block:elseblock {: RESULT = new IfStmt(opxleft,thenxright,e,then,elseblock); :}
+            | ELIF:op expr:e COLON block:then {: RESULT = new IfStmt(opxleft,thenxright,e,then,empty()); :}
+            ;
+
+simple_stmt ::= PASS {: RESULT = null; :}
+              | expr:e {: RESULT = new ExprStmt(exleft,exright,e); :}
+              | RETURN:r expr:e {: RESULT = new ReturnStmt(rxleft,exright,e); :}
+              | RETURN {: RESULT = null; :}
+              | chained_assigns:idlist ASSIGN expr:e {: RESULT = new AssignStmt(idlistxleft,exright,idlist,e); :}
               ;
 
-expr_stmt ::= expr:e    {: RESULT = new ExprStmt(exleft, exright, e); :}
+
+
+block ::= NEWLINE INDENT stmt_list:s DEDENT {: RESULT = s; :}
+        ;
+
+
+/* define lista de expressões
+             * aplica a recursão pela esquerda para múltiplas expressões */
+expr_list ::= expr:e                 {: RESULT = single(e); :}
+            | expr_list:l COMMA expr:e   {: RESULT = combine(l,e); :}
+            | expr_list:l error    {: RESULT = l; :}
             ;
 
-expr ::= binary_expr:e  {: RESULT = e; :}
-       | NUMBER:n       {: RESULT = new IntegerLiteral(nxleft, nxright, n); :}
+
+
+expr ::= cexpr:e {: RESULT = e; :}
+       | NOT:op expr:e {: RESULT = new UnaryExpr(opxleft,exright,op,e); :}
+       | expr:e1 AND:op expr:e2 {: RESULT = new BinaryExpr(e1xleft,e2xright,e1,op,e2); :}
+       | expr:e1 OR:op expr:e2 {: RESULT = new BinaryExpr(e1xleft,e2xright,e1,op,e2); :}
+       | expr:e1 IS:op expr:e2 {: RESULT = new BinaryExpr(e1xleft,e2xright,e1,op,e2); :}
+       | expr:e1 IF expr:e2 ELSE expr:e3 {: RESULT = new IfExpr(e1xleft,e3xright,e2,e1,e3); :} 
        ;
 
 
-/* A binary expression, illustrating how to find the left and right
- * source position of a phrase. */
-binary_expr ::= expr:e1 PLUS:op expr:e2
-                        {: RESULT = new BinaryExpr(e1xleft, e2xright,
-                                                   e1, op, e2); :}
+literals ::= FALSE:f {: RESULT = new BooleanLiteral(fxleft,fxright,f); :}
+               | TRUE: t {: RESULT = new BooleanLiteral(txleft,txright,t); :}
+               | NONE: non {: RESULT = new NoneLiteral(nonxleft,nonxright); :}
+               | STRING:str {: RESULT = new StringLiteral(strxleft,strxright,str.substring(1, str.length() - 1)); :}
+               | NUMBER:num       {: RESULT = new IntegerLiteral(numxleft, numxright, num); :}
+               | IDSTRING:str {: RESULT = new StringLiteral(strxleft,strxright,str.substring(1, str.length() - 1)); :}
+               ;
+
+cexpr ::= literals:l {: RESULT = l; :}
+        | cexpr:e1 PLUS:op cexpr:e2 {: RESULT = new BinaryExpr(e1xleft, e2xright, e1, op, e2); :}
+        | cexpr:e1 MINUS:op cexpr:e2 {: RESULT = new BinaryExpr(e1xleft, e2xright, e1, op, e2); :}
+        | cexpr:e1 TIMES:op cexpr:e2 {: RESULT = new BinaryExpr(e1xleft, e2xright, e1, op, e2); :}
+        | cexpr:e1 FLOORDIV:op cexpr:e2 {: RESULT = new BinaryExpr(e1xleft, e2xright, e1, op, e2); :}
+        | cexpr:e1 MOD:op cexpr:e2 {: RESULT = new BinaryExpr(e1xleft, e2xright, e1, op, e2); :}
+        | cexpr:e1 LE:op cexpr:e2 {: RESULT = new BinaryExpr(e1xleft, e2xright, e1, op, e2); :}
+        | cexpr:e1 GE:op cexpr:e2 {: RESULT = new BinaryExpr(e1xleft, e2xright, e1, op, e2); :}
+        | cexpr:e1 EQ:op cexpr:e2 {: RESULT = new BinaryExpr(e1xleft, e2xright, e1, op, e2); :}
+        | cexpr:e1 NE:op cexpr:e2 {: RESULT = new BinaryExpr(e1xleft, e2xright, e1, op, e2); :}
+        | cexpr:e1 GT:op cexpr:e2 {: RESULT = new BinaryExpr(e1xleft, e2xright, e1, op, e2); :}
+        | cexpr:e1 LT:op cexpr:e2 {: RESULT = new BinaryExpr(e1xleft, e2xright, e1, op, e2); :}
+        | member_expr:me {: RESULT = me; :}
+        | index_expr:ie {: RESULT = ie; :}
+        | LBRACKET:first expr_list:l RBRACKET:r {:RESULT =  new ListExpr(firstxleft,rxright,l); :} 
+        | member_expr:me LPAREN expr_list:l RPAREN:rp {: RESULT = new MethodCallExpr(mexleft,rpxright,me,l); :}
+        | identifier:id LPAREN expr_list:l RPAREN:rp {: RESULT = new CallExpr(idxleft,rpxright,id,l); :}
+        | LBRACKET:l RBRACKET:r {: RESULT =  new ListExpr(lxleft,rxright,empty()); :} 
+        | member_expr:me LPAREN RPAREN:rp {: RESULT = new MethodCallExpr(mexleft,rpxright,me,empty()); :}
+        | identifier:id LPAREN RPAREN:rp {: RESULT = new CallExpr(idxleft,rpxright,id,empty()); :}
+        | MINUS:op cexpr:e {: RESULT = new UnaryExpr(opxleft, exright,op,e); :}
+        | LPAREN expr:e RPAREN {: RESULT = e; :}
+        | identifier:id {: RESULT = id; :}
+        ;
+
+identifier ::=  IDENTIFIER:id {: RESULT = new Identifier(idxleft,idxright,id); :}
+            ;
+
+index_expr ::= cexpr:e1 LBRACKET expr:e2 RBRACKET:rb {: RESULT = new IndexExpr(e1xleft,rbxright,e1,e2); :}
+             ;
+
+member_expr ::= cexpr:obj DOT identifier:member {: RESULT = new MemberExpr(objxleft,memberxright,obj,member); :}
               ;
+
+/* define atribuições encadeadas
+             * aplica a recursão pela esquerda para múltiplas atribuições consideradas válidas */
+chained_assigns ::= chained_assigns:l ASSIGN identifier:id {: RESULT = combine(l,id); :}
+                  | chained_assigns:l ASSIGN index_expr:ie {: RESULT = combine(l,ie); :}
+                  | chained_assigns:l ASSIGN member_expr:me {: RESULT = combine(l,me); :}
+                  | identifier:id {: RESULT = single(id); :}
+                  | index_expr:ie {: RESULT = single(ie); :}
+                  | member_expr:me {: RESULT = single(me); :}
+                  ;
