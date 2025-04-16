@@ -70,7 +70,6 @@ Respostas às perguntas:
 	Há também mecanismos para eliminar NEWLINEs redundantes, para que não seja emitido DEDENT INDENT dentro de um mesmo bloco por conta de uma quebra de linha desnecessária, por exemplo.
 
 
-2) 	A relação é muito grande. O algoritmo descrito pelo manual do ChocoPy foi seguido praticamente à risca.
-
+2) 	A relação é muito grande. O algoritmo descrito pelo manual do ChocoPy foi seguido praticamente à risca. No entanto, houve algumas adaptações que tiveram de ser feitas devido à ferramenta utilizada (JFlex), como, por exemplo, a emissão de vários tokens DEDENT. A emissão de mais de um token na mesma regra é impossível para o jflex, então, para contornarmos a situação, utilizamos a função yypushback(), para voltar na fita e permitir a correta execução do algoritmo de pilha descrito pelo manual.
 
 3)  A principal dificuldade em relação ao código foi aplicar a recursão, de acordo com a BNF apresentada no ChocoPy, sem gerar conflitos de Reduce-Reduce e Shift-Reduce. Além disso, o fato de ser extremamente difícil de se debuggar o código também trouxe grandes transtornos, visto que não sabiamos exatamente o que estava errado e como consertar quando alterávamos o código.
