@@ -54,9 +54,8 @@ Team member 2: Fellipe Carvalho Pombo Lima
 
 Team member 3: Leonardo Meato Fernandes
 
-(Students should edit this section with their write-up)
 
-Projeto desenvolvido em X horas.
+Projeto desenvolvido em 120 horas.
 
 Respostas às perguntas:
 
@@ -70,4 +69,8 @@ Respostas às perguntas:
 
 	Há também mecanismos para eliminar NEWLINEs redundantes, para que não seja emitido DEDENT INDENT dentro de um mesmo bloco por conta de uma quebra de linha desnecessária, por exemplo.
 
+
 2) 	A relação é muito grande. O algoritmo descrito pelo manual do ChocoPy foi seguido praticamente à risca.
+
+
+3)  A principal dificuldade em relação ao código foi aplicar a recursão, de acordo com a BNF apresentada no ChocoPy, sem gerar conflitos de Reduce-Reduce e Shift-Reduce. Além disso, o fato de ser extremamente difícil de se debuggar o código também trouxe grandes transtornos, visto que não sabiamos exatamente o que estava errado e como consertar quando alterávamos o código.
